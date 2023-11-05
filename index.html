@@ -3,16 +3,18 @@
 
 <head>
     <title>Simple To-Do App</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 
 <body>
-    <h1>To-Do List</h1>
-    <input type="text" id="taskInput" placeholder="Add a new task">
-    <button onclick="addTask()">Add</button>
+    <h1 id="date">Today's Date</h1>
+    <form id="taskForm" onsubmit="addTask(); return false;">
+        <input type="text" id="taskInput" placeholder="Add a new task">
+    </form>
+    <button id="clearButton" onclick="clearCompletedTasks()">Clear Completed</button>
     <ul id="taskList">
         <!-- Tasks will be added here dynamically -->
     </ul>
-    <button onclick="clearCompletedTasks()">Clear Completed</button>
     <script src="app.js"></script>
 </body>
 

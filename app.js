@@ -9,6 +9,7 @@ function addTask() {
     if (taskText !== "") {
         tasks.push({ text: taskText, completed: false });
         displayTasks();
+        saveTasks();
         taskInput.value = "";
     }
 }
@@ -27,6 +28,7 @@ function displayTasks() {
         checkbox.addEventListener("change", () => {
             task.completed = checkbox.checked;
             displayTasks();
+            saveTasks();
         });
 
         const taskText = document.createElement("span");
@@ -46,7 +48,32 @@ function clearCompletedTasks() {
         }
     }
     displayTasks();
+    saveTasks();
 }
 
-// Initial task display
-displayTasks();
+// Function to save tasks to local storage
+function saveTasks() {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+// Initialize tasks array by retrieving data from local storage
+const savedTasks = JSON.parse(localStorage.getItem('tasks'));
+if (Array.isArray(savedTasks)) {
+    tasks.push(...savedTasks);
+}
+
+// Function to display the current date
+function displayDate() {
+    const dateElement = document.getElementById("date");
+    const currentDate = new Date();
+
+    // Format the date as "Day, Month Date, Year"
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = currentDate.toLocaleDateString('en-US', options);
+
+    dateElement.textContent = formattedDate;
+}
+
+// Initialize the date with the custom color when the page loads
+displayDate();
+

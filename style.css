@@ -1,6 +1,11 @@
 body {
     font-family: Arial, sans-serif;
     text-align: center;
+    background-image: url('https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&q=80&w=2070&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center center;
 }
 
 h1 {
@@ -34,4 +39,26 @@ button {
 
 button:hover {
     background-color: #0056b3;
+}
+
+#taskForm {
+    display: flex;
+    justify-content: space-between;
+}
+
+#clearButton {
+    background-color: #ff5733;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+}
+
+#date {
+    color: #ff5733;
+}
+
+
+#clearButton:hover {
+    background-color: #e5472d;
 }
