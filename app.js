@@ -1,7 +1,5 @@
-// Define an array to store tasks
 const tasks = [];
 
-// Function to add a new task
 function addTask() {
     const taskInput = document.getElementById("taskInput");
     const taskText = taskInput.value.trim();
@@ -14,7 +12,6 @@ function addTask() {
     }
 }
 
-// Function to display tasks
 function displayTasks() {
     const taskList = document.getElementById("taskList");
     taskList.innerHTML = "";
@@ -40,7 +37,6 @@ function displayTasks() {
     }
 }
 
-// Function to clear completed tasks
 function clearCompletedTasks() {
     for (let i = tasks.length - 1; i >= 0; i--) {
         if (tasks[i].completed) {
@@ -51,29 +47,24 @@ function clearCompletedTasks() {
     saveTasks();
 }
 
-// Function to save tasks to local storage
 function saveTasks() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-// Initialize tasks array by retrieving data from local storage
 const savedTasks = JSON.parse(localStorage.getItem('tasks'));
 if (Array.isArray(savedTasks)) {
     tasks.push(...savedTasks);
 }
 
-// Function to display the current date
 function displayDate() {
     const dateElement = document.getElementById("date");
     const currentDate = new Date();
 
-    // Format the date as "Day, Month Date, Year"
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formattedDate = currentDate.toLocaleDateString('en-US', options);
 
     dateElement.textContent = formattedDate;
 }
 
-// Initialize the date with the custom color when the page loads
 displayDate();
 
