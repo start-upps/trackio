@@ -1,8 +1,7 @@
-// src/app/auth/signin/page.tsx
+// src/app/api/auth/signin/page.tsx
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { getProviders } from "next-auth/react"
 
 export default async function SignIn() {
   const session = await auth()
@@ -34,5 +33,3 @@ export default async function SignIn() {
     </div>
   )
 }
-
-export const runtime = "nodejs"

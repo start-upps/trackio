@@ -1,23 +1,23 @@
-
 // src/app/api/habits/[habitId]/entries/route.ts
 import { NextResponse } from "next/server"
-import { getCurrentUser } from "@/lib/auth"
-import prisma from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { db } from "@/lib/db"
 
 export async function POST(
   req: Request,
   { params }: { params: { habitId: string } }
 ) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
+    const session = await auth()
+    
+    if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const habit = await prisma.habit.findUnique({
+    const habit = await db.habit.findUnique({
       where: {
         id: params.habitId,
-        userId: user.id
+        userId: session.user.id
       }
     })
 
@@ -25,10 +25,9 @@ export async function POST(
       return new NextResponse("Not Found", { status: 404 })
     }
 
-    const body = await req.json()
-    const { date, completed } = body
+    const { date, completed } = await req.json()
 
-    const entry = await prisma.habitEntry.upsert({
+    const entry = await db.habitEntry.upsert({
       where: {
         habitId_date: {
           habitId: params.habitId,
@@ -46,7 +45,9 @@ export async function POST(
     })
 
     return NextResponse.json(entry)
-  } catch (error) {
+  } catch {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+
+export const runtime = "nodejs"

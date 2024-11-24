@@ -26,9 +26,9 @@ export async function GET() {
     })
 
     return NextResponse.json(habits)
-  } catch (error) {
+  } catch {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
 
-export const runtime = "edge"
+export const runtime = "nodejs"

@@ -1,21 +1,23 @@
 // src/app/layout.tsx
-import "./globals.css"
-import { auth } from "@/lib/auth"
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
 
-export default async function RootLayout({
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'Trackio',
+  description: 'Track your daily habits',
+}
+
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
-
   return (
     <html lang="en">
-      <body>
-        <main>
-          {children}
-        </main>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }
