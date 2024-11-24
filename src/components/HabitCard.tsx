@@ -29,7 +29,7 @@ export function HabitCard({ habit, onToggle }: HabitCardProps) {
   }).reverse()
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4 mb-4">
+    <div className="bg-zinc-900 rounded-lg p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div 
@@ -40,13 +40,13 @@ export function HabitCard({ habit, onToggle }: HabitCardProps) {
           </div>
           <div>
             <h3 className="text-white font-medium">{habit.name}</h3>
-            <p className="text-gray-400 text-sm">{habit.description}</p>
+            <p className="text-zinc-400 text-sm">{habit.description}</p>
           </div>
         </div>
         <Button
           onClick={() => onToggle(habit.id, today)}
-          className="p-2 rounded-lg"
-          style={{ backgroundColor: `${habit.color}33` }}
+          className="rounded-lg"
+          variant="ghost"
         >
           ✓
         </Button>
@@ -58,14 +58,14 @@ export function HabitCard({ habit, onToggle }: HabitCardProps) {
             (e) => format(new Date(e.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
           )
           return (
-            <div
+            <button
               key={date.toISOString()}
-              className={`w-full pt-[100%] relative rounded-sm cursor-pointer`}
+              onClick={() => onToggle(habit.id, date)}
+              className="w-full pt-[100%] relative rounded-sm transition-opacity"
               style={{ 
                 backgroundColor: habit.color,
                 opacity: entry?.completed ? 1 : 0.3
               }}
-              onClick={() => onToggle(habit.id, date)}
             />
           )
         })}
@@ -73,4 +73,3 @@ export function HabitCard({ habit, onToggle }: HabitCardProps) {
     </div>
   )
 }
-
