@@ -2,7 +2,6 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { signInWithGoogle } from "@/lib/actions"
 
 export default async function SignIn() {
   const session = await auth()
@@ -19,10 +18,10 @@ export default async function SignIn() {
             Sign in to Trackio
           </h2>
         </div>
-        <div className="mt-8 space-y-6">
-          <form>
+        <div className="mt-8">
+          <form action="/api/auth/signin/google" method="POST">
             <Button
-              formAction={signInWithGoogle}
+              type="submit"
               className="w-full"
               variant="default"
             >
@@ -34,5 +33,3 @@ export default async function SignIn() {
     </div>
   )
 }
-
-export const runtime = "nodejs"

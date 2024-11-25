@@ -3,13 +3,17 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { db } from "./db"
+import type { DefaultSession, NextAuthConfig } from "next-auth"
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth({
+declare module "next-auth" {
+  interface Session extends DefaultSession {
+    user: {
+      id: string;
+    } & DefaultSession["user"]
+  }
+}
+
+export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(db),
   providers: [
     Google({
@@ -17,28 +21,14 @@ export const {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  pages: {
-    signIn: "/auth/signin",
-  },
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-      }
-      return token
-    },
-    session({ session, token }) {
+    session({ session, user }) {
       if (session.user) {
-        session.user.id = token.id as string
+        session.user.id = user.id
       }
       return session
-    },
-  },
-})
+    }
+  }
+}
 
-// Use Node runtime
-export const runtime = "nodejs"
+export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth(authConfig)
