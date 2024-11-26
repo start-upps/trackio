@@ -1,18 +1,14 @@
 // src/components/NewHabitButton.tsx
-"use client"
+"use client";
 
-import { Plus } from "lucide-react"
-import { Button } from "./ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "./ui/dialog"
-import { NewHabitForm } from "./NewHabitForm"
-import { useState } from "react"
+import { Plus } from "lucide-react";
+import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
+import { NewHabitForm } from "./NewHabitForm";
+import { useState } from "react";
 
 export function NewHabitButton() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -26,5 +22,5 @@ export function NewHabitButton() {
         <NewHabitForm onClose={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
-  )
+  );
 }

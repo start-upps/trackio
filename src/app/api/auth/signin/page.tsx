@@ -1,13 +1,13 @@
 // src/app/api/auth/signin/page.tsx
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default async function SignIn() {
-  const session = await auth()
+  const session = await auth();
 
   if (session) {
-    redirect("/")
+    redirect("/");
   }
 
   return (
@@ -20,16 +20,12 @@ export default async function SignIn() {
         </div>
         <div className="mt-8">
           <form action="/api/auth/signin/google" method="POST">
-            <Button
-              type="submit"
-              className="w-full"
-              variant="default"
-            >
+            <Button type="submit" className="w-full" variant="default">
               Sign in with Google
             </Button>
           </form>
         </div>
       </div>
     </div>
-  )
+  );
 }

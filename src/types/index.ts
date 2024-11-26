@@ -1,2 +1,2 @@
 // src/types/index.ts
-export * from './habit'
+export * from "./habit";

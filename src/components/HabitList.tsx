@@ -1,13 +1,13 @@
 // src/components/HabitList.tsx
-"use client"
+"use client";
 
-import { HabitCard } from "./HabitCard"
-import type { Habit } from "@/types/habit"
-import { OptimisticProvider } from "./providers/OptimisticProvider"
-import { motion, AnimatePresence } from "framer-motion"
+import { HabitCard } from "./HabitCard";
+import type { Habit } from "@/types/habit";
+import { OptimisticProvider } from "./providers/OptimisticProvider";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface HabitListProps {
-  habits: Habit[]
+  habits: Habit[];
 }
 
 const container = {
@@ -15,15 +15,15 @@ const container = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
-    }
-  }
-}
+      staggerChildren: 0.1,
+    },
+  },
+};
 
 export function HabitList({ habits }: HabitListProps) {
   if (habits.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center py-12"
@@ -35,7 +35,7 @@ export function HabitList({ habits }: HabitListProps) {
           Create your first habit to start tracking your progress
         </p>
       </motion.div>
-    )
+    );
   }
 
   return (
@@ -61,5 +61,5 @@ export function HabitList({ habits }: HabitListProps) {
         </AnimatePresence>
       </motion.div>
     </OptimisticProvider>
-  )
+  );
 }

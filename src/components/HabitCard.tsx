@@ -1,110 +1,117 @@
 // src/components/HabitCard.tsx
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { format, isToday, isAfter } from 'date-fns'
-import { Button } from './ui/button'
-import { type Habit, type HabitEntry } from "@/types/habit"
-import { useOptimisticHabits } from './providers/OptimisticProvider'
-import { cn } from '@/lib/utils'
-import { motion, AnimatePresence } from "framer-motion"
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Calendar, 
-  BarChart2, 
-  Grid, 
+import { useState } from "react";
+import { format, isToday, isAfter } from "date-fns";
+import { Button } from "./ui/button";
+import { type Habit, type HabitEntry } from "@/types/habit";
+import { useOptimisticHabits } from "./providers/OptimisticProvider";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChevronDown,
+  ChevronUp,
+  Calendar,
+  BarChart2,
+  Grid,
   Trophy,
   Settings2,
   Pencil,
   Archive,
-  Trash2
-} from 'lucide-react'
-import { HabitStats } from './HabitStats'
-import { HabitCharts } from './HabitCharts'
-import { HeatmapView } from './HeatmapView'
-import { toast } from 'sonner'
+  Trash2,
+} from "lucide-react";
+import { HabitStats } from "./HabitStats";
+import { HabitCharts } from "./HabitCharts";
+import { HeatmapView } from "./HeatmapView";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./ui/tooltip"
+} from "./ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu"
-import { EditHabitDialog } from './EditHabitDialog'
+} from "./ui/dropdown-menu";
+import { EditHabitDialog } from "./EditHabitDialog";
 
 interface HabitCardProps {
-  habit: Habit
-  onUpdate?: (id: string, data: Partial<Habit>) => Promise<void>
-  onDelete?: (id: string) => Promise<void>
-  onArchive?: (id: string) => Promise<void>
+  habit: Habit;
+  onUpdate?: (id: string, data: Partial<Habit>) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  onArchive?: (id: string) => Promise<void>;
 }
 
-type ViewType = 'stats' | 'charts' | 'heatmap'
+type ViewType = "stats" | "charts" | "heatmap";
 
 const viewIcons = {
-  stats: { icon: <Calendar className="h-4 w-4" />, label: 'Statistics' },
-  charts: { icon: <BarChart2 className="h-4 w-4" />, label: 'Analytics' },
-  heatmap: { icon: <Grid className="h-4 w-4" />, label: 'Activity' }
-}
+  stats: { icon: <Calendar className="h-4 w-4" />, label: "Statistics" },
+  charts: { icon: <BarChart2 className="h-4 w-4" />, label: "Analytics" },
+  heatmap: { icon: <Grid className="h-4 w-4" />, label: "Activity" },
+};
 
 const slideUpAndFade = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 }
-}
+  exit: { opacity: 0, y: -20 },
+};
 
-export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardProps) {
-  const { toggleHabit, isPending } = useOptimisticHabits()
-  const [showStats, setShowStats] = useState(false)
-  const [view, setView] = useState<ViewType>('stats')
-  const [isEditing, setIsEditing] = useState(false)
+export function HabitCard({
+  habit,
+  onUpdate,
+  onDelete,
+  onArchive,
+}: HabitCardProps) {
+  const { toggleHabit, isPending } = useOptimisticHabits();
+  const [showStats, setShowStats] = useState(false);
+  const [view, setView] = useState<ViewType>("stats");
+  const [isEditing, setIsEditing] = useState(false);
 
   const currentStreak = habit.entries
-    .filter(entry => entry.completed)
+    .filter((entry) => entry.completed)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .reduce((streak, entry, index, arr) => {
-      if (index === 0 && isAfter(new Date(entry.date), new Date())) return 0
-      if (index === 0) return 1
-      const prevDate = new Date(arr[index - 1].date)
-      const currentDate = new Date(entry.date)
-      const diffDays = Math.floor((prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
-      return diffDays === 1 ? streak + 1 : streak
-    }, 0)
+      if (index === 0 && isAfter(new Date(entry.date), new Date())) return 0;
+      if (index === 0) return 1;
+      const prevDate = new Date(arr[index - 1].date);
+      const currentDate = new Date(entry.date);
+      const diffDays = Math.floor(
+        (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      return diffDays === 1 ? streak + 1 : streak;
+    }, 0);
 
   const handleUpdate = async (data: Partial<Habit>) => {
     try {
-      await onUpdate?.(habit.id, data)
-      toast.success('Habit updated successfully')
-      setIsEditing(false)
+      await onUpdate?.(habit.id, data);
+      toast.success("Habit updated successfully");
+      setIsEditing(false);
     } catch (error) {
-      toast.error('Failed to update habit')
+      toast.error("Failed to update habit");
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      await onDelete?.(habit.id)
-      toast.success('Habit deleted successfully')
+      await onDelete?.(habit.id);
+      toast.success("Habit deleted successfully");
     } catch (error) {
-      toast.error('Failed to delete habit')
+      toast.error("Failed to delete habit");
     }
-  }
+  };
 
   const handleArchive = async () => {
     try {
-      await onArchive?.(habit.id)
-      toast.success('Habit archived successfully')
+      await onArchive?.(habit.id);
+      toast.success("Habit archived successfully");
     } catch (error) {
-      toast.error('Failed to archive habit')
+      toast.error("Failed to archive habit");
     }
-  }
+  };
 
   return (
     <motion.div
@@ -112,7 +119,7 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
       {...slideUpAndFade}
       className={cn(
         "bg-gray-800 rounded-lg p-4 transition-all border border-gray-700/50",
-        isPending && "opacity-75"
+        isPending && "opacity-75",
       )}
     >
       <div className="flex items-center justify-between mb-4">
@@ -120,7 +127,7 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -158,16 +165,14 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
                         size="icon"
                         className={cn(
                           "h-8 w-8",
-                          view === viewType && "bg-gray-600"
+                          view === viewType && "bg-gray-600",
                         )}
                         onClick={() => setView(viewType)}
                       >
                         {viewIcons[viewType].icon}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      {viewIcons[viewType].label}
-                    </TooltipContent>
+                    <TooltipContent>{viewIcons[viewType].label}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               ))}
@@ -189,10 +194,7 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
                 Archive
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-400"
-                onClick={handleDelete}
-              >
+              <DropdownMenuItem className="text-red-400" onClick={handleDelete}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
@@ -213,9 +215,14 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <Button
-                    onClick={() => toggleHabit(habit.id, new Date().toISOString())}
+                    onClick={() =>
+                      toggleHabit(habit.id, new Date().toISOString())
+                    }
                     variant="ghost"
                     size="icon"
                     disabled={isPending}
@@ -229,17 +236,19 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
           </TooltipProvider>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-7 gap-1">
         <AnimatePresence>
           {Array.from({ length: 28 }).map((_, i) => {
-            const date = new Date()
-            date.setDate(date.getDate() - (27 - i))
-            const dateStr = date.toISOString()
-            const entry = habit.entries.find((entry: HabitEntry) => 
-              format(new Date(entry.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-            )
-            const isCurrentDay = isToday(date)
+            const date = new Date();
+            date.setDate(date.getDate() - (27 - i));
+            const dateStr = date.toISOString();
+            const entry = habit.entries.find(
+              (entry: HabitEntry) =>
+                format(new Date(entry.date), "yyyy-MM-dd") ===
+                format(date, "yyyy-MM-dd"),
+            );
+            const isCurrentDay = isToday(date);
 
             return (
               <TooltipProvider key={dateStr}>
@@ -257,28 +266,31 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
                       className={cn(
                         "aspect-square rounded-sm transition-all relative",
                         isPending && "cursor-not-allowed",
-                        isCurrentDay && "ring-2 ring-white ring-offset-2 ring-offset-gray-800"
+                        isCurrentDay &&
+                          "ring-2 ring-white ring-offset-2 ring-offset-gray-800",
                       )}
-                      style={{ 
+                      style={{
                         backgroundColor: habit.color,
-                        opacity: entry?.completed ? 1 : 0.2 
+                        opacity: entry?.completed ? 1 : 0.2,
                       }}
                     />
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-sm">
-                      <p>{format(date, 'MMMM d, yyyy')}</p>
-                      <p className={cn(
-                        "mt-1",
-                        entry?.completed ? "text-green-400" : "text-gray-400"
-                      )}>
-                        {entry?.completed ? 'Completed' : 'Not completed'}
+                      <p>{format(date, "MMMM d, yyyy")}</p>
+                      <p
+                        className={cn(
+                          "mt-1",
+                          entry?.completed ? "text-green-400" : "text-gray-400",
+                        )}
+                      >
+                        {entry?.completed ? "Completed" : "Not completed"}
                       </p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            )
+            );
           })}
         </AnimatePresence>
       </div>
@@ -292,9 +304,9 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {view === 'stats' ? (
+            {view === "stats" ? (
               <HabitStats habit={habit} />
-            ) : view === 'charts' ? (
+            ) : view === "charts" ? (
               <HabitCharts habit={habit} />
             ) : (
               <HeatmapView habit={habit} />
@@ -310,5 +322,5 @@ export function HabitCard({ habit, onUpdate, onDelete, onArchive }: HabitCardPro
         onSubmit={handleUpdate}
       />
     </motion.div>
-  )
+  );
 }

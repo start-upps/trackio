@@ -1,5 +1,5 @@
 // src/app/api/auth/[...nextauth]/route.ts
-import { GET, POST } from "@/lib/auth"
+import { GET, POST } from "@/lib/auth";
 
-export { GET, POST }
-export const runtime = "nodejs"
+export { GET, POST };
+export const runtime = "nodejs";

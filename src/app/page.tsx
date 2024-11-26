@@ -1,43 +1,43 @@
 // src/app/page.tsx
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { db } from "@/lib/db"
-import { HabitList } from "@/components/HabitList"
-import { NewHabitButton } from "@/components/NewHabitButton"
-import { type Habit } from "@/types/habit"
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { HabitList } from "@/components/HabitList";
+import { NewHabitButton } from "@/components/NewHabitButton";
+import { type Habit } from "@/types/habit";
 
 export default async function Home() {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user) {
-    redirect('/auth/signin')
+    redirect("/auth/signin");
   }
 
   const habits = await db.habit.findMany({
     where: {
-      userId: session.user.id
+      userId: session.user.id,
     },
     include: {
       entries: {
         orderBy: {
-          date: 'desc'
+          date: "desc",
         },
-        take: 28
-      }
-    }
-  })
+        take: 28,
+      },
+    },
+  });
 
-  const serializedHabits: Habit[] = habits.map(habit => ({
+  const serializedHabits: Habit[] = habits.map((habit) => ({
     ...habit,
     createdAt: habit.createdAt.toISOString(),
     updatedAt: habit.updatedAt.toISOString(),
-    entries: habit.entries.map(entry => ({
+    entries: habit.entries.map((entry) => ({
       ...entry,
       date: entry.date.toISOString(),
       createdAt: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toISOString(),
-    }))
-  }))
+    })),
+  }));
 
   return (
     <main className="container mx-auto max-w-2xl p-4">
@@ -50,5 +50,5 @@ export default async function Home() {
       </div>
       <HabitList habits={serializedHabits} />
     </main>
-  )
+  );
 }

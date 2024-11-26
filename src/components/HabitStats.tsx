@@ -1,16 +1,16 @@
 // src/components/HabitStats.tsx
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
-import { Flame, CheckCircle, Calendar, Percent } from "lucide-react"
-import { calculateHabitStats } from "@/lib/stats"
-import type { Habit } from "@/types/habit"
+import { motion } from "framer-motion";
+import { Flame, CheckCircle, Calendar, Percent } from "lucide-react";
+import { calculateHabitStats } from "@/lib/stats";
+import type { Habit } from "@/types/habit";
 
 interface StatCardProps {
-  label: string
-  value: number | string
-  icon: React.ReactNode
-  delay?: number
+  label: string;
+  value: number | string;
+  icon: React.ReactNode;
+  delay?: number;
 }
 
 function StatCard({ label, value, icon, delay = 0 }: StatCardProps) {
@@ -21,19 +21,17 @@ function StatCard({ label, value, icon, delay = 0 }: StatCardProps) {
       transition={{ delay }}
       className="bg-gray-800 rounded-lg p-4 flex items-center gap-4"
     >
-      <div className="p-2 bg-gray-700 rounded-lg">
-        {icon}
-      </div>
+      <div className="p-2 bg-gray-700 rounded-lg">{icon}</div>
       <div>
         <p className="text-sm text-gray-400">{label}</p>
         <p className="text-2xl font-bold">{value}</p>
       </div>
     </motion.div>
-  )
+  );
 }
 
 export function HabitStats({ habit }: { habit: Habit }) {
-  const stats = calculateHabitStats(habit)
+  const stats = calculateHabitStats(habit);
 
   return (
     <div className="grid grid-cols-2 gap-4 mt-4">
@@ -62,5 +60,5 @@ export function HabitStats({ habit }: { habit: Habit }) {
         delay={0.4}
       />
     </div>
-  )
+  );
 }

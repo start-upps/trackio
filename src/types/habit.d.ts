@@ -6,7 +6,7 @@ export type HabitEntry = {
   createdAt: string;
   updatedAt: string;
   habitId: string;
-}
+};
 
 export type Habit = {
   id: string;
@@ -18,4 +18,4 @@ export type Habit = {
   updatedAt: string;
   userId: string;
   entries: HabitEntry[];
-}
+};

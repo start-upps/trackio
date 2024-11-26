@@ -1,37 +1,37 @@
 // src/components/NewHabitForm.tsx
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { Dialog, DialogContent, DialogClose } from './ui/dialog'
-import { Button } from './ui/button'
-import { toast } from "sonner"
-import { motion } from "framer-motion"
+import { useState } from "react";
+import { Dialog, DialogContent, DialogClose } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 interface NewHabitFormProps {
-  onClose?: () => void
+  onClose?: () => void;
 }
 
 export function NewHabitForm({ onClose }: NewHabitFormProps) {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
   async function onSubmit(formData: FormData) {
-    setLoading(true)
-    
-    const promise = fetch('/api/habits', {
-      method: 'POST',
+    setLoading(true);
+
+    const promise = fetch("/api/habits", {
+      method: "POST",
       body: formData,
-    }).then(res => {
-      if (!res.ok) throw new Error('Failed to create habit')
-      onClose?.()
-    })
+    }).then((res) => {
+      if (!res.ok) throw new Error("Failed to create habit");
+      onClose?.();
+    });
 
     toast.promise(promise, {
-      loading: 'Creating new habit...',
-      success: 'Habit created successfully!',
-      error: 'Failed to create habit. Please try again.',
-    })
-    
-    setLoading(false)
+      loading: "Creating new habit...",
+      success: "Habit created successfully!",
+      error: "Failed to create habit. Please try again.",
+    });
+
+    setLoading(false);
   }
 
   return (
@@ -91,5 +91,5 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
         </motion.div>
       </div>
     </motion.form>
-  )
+  );
 }

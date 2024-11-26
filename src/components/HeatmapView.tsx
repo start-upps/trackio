@@ -1,35 +1,37 @@
 // src/components/HeatmapView.tsx
-"use client"
+"use client";
 
-import { format, startOfWeek, eachDayOfInterval, subMonths } from 'date-fns'
-import { motion } from "framer-motion"
-import { type Habit, type HabitEntry } from "@/types/habit"
+import { format, startOfWeek, eachDayOfInterval, subMonths } from "date-fns";
+import { motion } from "framer-motion";
+import { type Habit, type HabitEntry } from "@/types/habit";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./ui/tooltip"
+} from "./ui/tooltip";
 
 interface HeatmapViewProps {
-  habit: Habit
+  habit: Habit;
 }
 
 export function HeatmapView({ habit }: HeatmapViewProps) {
-  const endDate = new Date()
-  const startDate = subMonths(endDate, 3)
-  const days = eachDayOfInterval({ start: startDate, end: endDate })
+  const endDate = new Date();
+  const startDate = subMonths(endDate, 3);
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const weeks = days.reduce<Date[][]>((acc, date) => {
-    const weekStart = startOfWeek(date)
-    const weekIndex = Math.floor((date.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
-    
+    const weekStart = startOfWeek(date);
+    const weekIndex = Math.floor(
+      (date.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    );
+
     if (!acc[weekIndex]) {
-      acc[weekIndex] = []
+      acc[weekIndex] = [];
     }
-    acc[weekIndex].push(date)
-    return acc
-  }, [])
+    acc[weekIndex].push(date);
+    return acc;
+  }, []);
 
   return (
     <div className="mt-4">
@@ -38,11 +40,11 @@ export function HeatmapView({ habit }: HeatmapViewProps) {
         {weeks.map((week, weekIndex) => (
           <div key={weekIndex} className="flex flex-col gap-1">
             {week.map((day) => {
-              const dateStr = format(day, 'yyyy-MM-dd')
+              const dateStr = format(day, "yyyy-MM-dd");
               const entry = habit.entries.find(
-                (e) => format(new Date(e.date), 'yyyy-MM-dd') === dateStr
-              )
-              const intensity = entry?.completed ? 1 : 0
+                (e) => format(new Date(e.date), "yyyy-MM-dd") === dateStr,
+              );
+              const intensity = entry?.completed ? 1 : 0;
 
               return (
                 <TooltipProvider key={dateStr}>
@@ -55,22 +57,22 @@ export function HeatmapView({ habit }: HeatmapViewProps) {
                         className="w-3 h-3 rounded-sm"
                         style={{
                           backgroundColor: habit.color,
-                          opacity: intensity ? 0.2 + (intensity * 0.8) : 0.1
+                          opacity: intensity ? 0.2 + intensity * 0.8 : 0.1,
                         }}
                       />
                     </TooltipTrigger>
                     <TooltipContent>
-                      {format(day, 'MMMM d, yyyy')}
+                      {format(day, "MMMM d, yyyy")}
                       <br />
-                      {entry?.completed ? 'Completed' : 'Not completed'}
+                      {entry?.completed ? "Completed" : "Not completed"}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              )
+              );
             })}
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

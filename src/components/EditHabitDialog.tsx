@@ -1,28 +1,28 @@
 // src/components/EditHabitDialog.tsx
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Pencil, Trash2, Info, Loader2 } from "lucide-react"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Pencil, Trash2, Info, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogClose,
   DialogDescription,
-} from "./ui/dialog"
-import { Button } from "./ui/button"
-import { Habit } from "@/types/habit"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Habit } from "@/types/habit";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface EditHabitDialogProps {
-  habit: Habit
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  onSubmit: (data: Partial<Habit>) => Promise<void>
-  onDelete?: (id: string) => Promise<void>
+  habit: Habit;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSubmit: (data: Partial<Habit>) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
 }
 
 const COLORS = [
@@ -34,53 +34,66 @@ const COLORS = [
   "#FF9800", // Orange
   "#9C27B0", // Deep Purple
   "#3F51B5", // Indigo
-]
+];
 
-const ICONS = ["📝", "💪", "🎯", "📚", "🏃‍♂️", "🧘‍♂️", "💻", "🎨", "🎵", "✍️", "🏋️‍♂️", "🎮"]
+const ICONS = [
+  "📝",
+  "💪",
+  "🎯",
+  "📚",
+  "🏃‍♂️",
+  "🧘‍♂️",
+  "💻",
+  "🎨",
+  "🎵",
+  "✍️",
+  "🏋️‍♂️",
+  "🎮",
+];
 
-const INPUT_MAX_LENGTH = 50
-const DESCRIPTION_MAX_LENGTH = 100
+const INPUT_MAX_LENGTH = 50;
+const DESCRIPTION_MAX_LENGTH = 100;
 
-export function EditHabitDialog({ 
-  habit, 
+export function EditHabitDialog({
+  habit,
   open = false,
-  onOpenChange, 
+  onOpenChange,
   onSubmit,
-  onDelete
+  onDelete,
 }: EditHabitDialogProps) {
-  const [name, setName] = useState(habit.name)
-  const [description, setDescription] = useState(habit.description)
-  const [color, setColor] = useState(habit.color)
-  const [icon, setIcon] = useState(habit.icon)
-  const [isLoading, setIsLoading] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const nameInputRef = useRef<HTMLInputElement>(null)
+  const [name, setName] = useState(habit.name);
+  const [description, setDescription] = useState(habit.description);
+  const [color, setColor] = useState(habit.color);
+  const [icon, setIcon] = useState(habit.icon);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && nameInputRef.current) {
-      nameInputRef.current.focus()
+      nameInputRef.current.focus();
     }
-  }, [open])
+  }, [open]);
 
   useEffect(() => {
     if (open) {
       // Reset form to initial values when dialog opens
-      setName(habit.name)
-      setDescription(habit.description)
-      setColor(habit.color)
-      setIcon(habit.icon)
-      setShowDeleteConfirm(false)
+      setName(habit.name);
+      setDescription(habit.description);
+      setColor(habit.color);
+      setIcon(habit.icon);
+      setShowDeleteConfirm(false);
     }
-  }, [open, habit])
+  }, [open, habit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!name.trim() || !description.trim()) {
-      toast.error("Please fill in all fields")
-      return
+      toast.error("Please fill in all fields");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       await onSubmit({
@@ -88,31 +101,31 @@ export function EditHabitDialog({
         description: description.trim(),
         color,
         icon,
-      })
-      toast.success("Habit updated successfully")
-      onOpenChange?.(false)
+      });
+      toast.success("Habit updated successfully");
+      onOpenChange?.(false);
     } catch (error) {
-      toast.error("Failed to update habit")
+      toast.error("Failed to update habit");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!onDelete) return
+    if (!onDelete) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await onDelete(habit.id)
-      toast.success("Habit deleted successfully")
-      onOpenChange?.(false)
+      await onDelete(habit.id);
+      toast.success("Habit deleted successfully");
+      onOpenChange?.(false);
     } catch (error) {
-      toast.error("Failed to delete habit")
+      toast.error("Failed to delete habit");
     } finally {
-      setIsLoading(false)
-      setShowDeleteConfirm(false)
+      setIsLoading(false);
+      setShowDeleteConfirm(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,11 +152,13 @@ export function EditHabitDialog({
               ref={nameInputRef}
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value.slice(0, INPUT_MAX_LENGTH))}
+              onChange={(e) =>
+                setName(e.target.value.slice(0, INPUT_MAX_LENGTH))
+              }
               className={cn(
                 "w-full p-2 bg-gray-700 rounded-md border border-gray-600 text-white",
                 "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                "transition-colors"
+                "transition-colors",
               )}
               required
               maxLength={INPUT_MAX_LENGTH}
@@ -159,11 +174,13 @@ export function EditHabitDialog({
             </label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+              onChange={(e) =>
+                setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))
+              }
               className={cn(
                 "w-full p-2 bg-gray-700 rounded-md border border-gray-600 text-white",
                 "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                "transition-colors resize-none h-20"
+                "transition-colors resize-none h-20",
               )}
               required
               maxLength={DESCRIPTION_MAX_LENGTH}
@@ -182,7 +199,7 @@ export function EditHabitDialog({
                   onClick={() => setColor(c)}
                   className={cn(
                     "w-8 h-8 rounded-lg transition-all duration-200",
-                    color === c && "ring-2 ring-white shadow-lg"
+                    color === c && "ring-2 ring-white shadow-lg",
                   )}
                   style={{ backgroundColor: c }}
                 />
@@ -203,7 +220,7 @@ export function EditHabitDialog({
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center bg-gray-700",
                     "transition-all duration-200",
-                    icon === i && "ring-2 ring-white shadow-lg bg-gray-600"
+                    icon === i && "ring-2 ring-white shadow-lg bg-gray-600",
                   )}
                 >
                   {i}
@@ -275,7 +292,7 @@ export function EditHabitDialog({
                     Saving...
                   </>
                 ) : (
-                  'Save Changes'
+                  "Save Changes"
                 )}
               </Button>
             </div>
@@ -283,5 +300,5 @@ export function EditHabitDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
