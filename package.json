@@ -9,7 +9,6 @@
     "lint": "next lint",
     "test": "echo \"No tests specified\"",
     "postinstall": "prisma generate",
-    "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -51,7 +50,6 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "14.1.0",
     "eslint-config-prettier": "^9.1.0",
-    "husky": "^9.0.11",
     "lint-staged": "^15.2.2",
     "postcss": "^8.4.35",
     "prettier": "^3.2.5",
