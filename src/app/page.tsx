@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { HabitList } from "@/components/HabitList";
 import { NewHabitButton } from "@/components/NewHabitButton";
-import { type Habit, type HabitEntry } from "@/types/habit";
+import { type Habit } from "@/types/habit";
 import { Habit as PrismaHabit, HabitEntry as PrismaHabitEntry } from "@prisma/client";
 
 type HabitWithEntries = PrismaHabit & {

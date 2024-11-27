@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { format, isToday, isAfter } from "date-fns";
 import { Button } from "./ui/button";
-import { type Habit, type HabitEntry } from "@/types/habit";
+import { type Habit } from "@/types/habit";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";

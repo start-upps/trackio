@@ -1,9 +1,10 @@
 // src/components/HeatmapView.tsx
 "use client";
 
-import { format, startOfWeek, eachDayOfInterval, subMonths } from "date-fns";
 import { motion } from "framer-motion";
 import { type Habit } from "@/types/habit";
+import { format, eachDayOfInterval, subMonths } from "date-fns";
+
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +25,7 @@ export function HeatmapView({ habit }: HeatmapViewProps) {
     const weekIndex = Math.floor(
       (date.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
     );
-
+  
     if (!acc[weekIndex]) {
       acc[weekIndex] = [];
     }
