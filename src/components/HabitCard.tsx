@@ -138,7 +138,7 @@ export function HabitCard({
               </TooltipTrigger>
               <TooltipContent>
                 <div className="text-sm">
-                  <p>Click to mark today's habit</p>
+                  <p>Click to mark today&apos;s habit</p>
                   {currentStreak > 0 && (
                     <p className="text-green-400 flex items-center gap-1 mt-1">
                       <Trophy className="h-3 w-3" /> {currentStreak} day streak!
@@ -231,7 +231,7 @@ export function HabitCard({
                   </Button>
                 </motion.div>
               </TooltipTrigger>
-              <TooltipContent>Mark today's habit as complete</TooltipContent>
+              <TooltipContent>Mark today&apos;s habit as complete</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
@@ -244,7 +244,7 @@ export function HabitCard({
             date.setDate(date.getDate() - (27 - i));
             const dateStr = date.toISOString();
             const entry = habit.entries.find(
-              (entry: HabitEntry) =>
+              (entry) =>
                 format(new Date(entry.date), "yyyy-MM-dd") ===
                 format(date, "yyyy-MM-dd"),
             );

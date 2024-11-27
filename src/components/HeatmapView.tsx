@@ -3,7 +3,7 @@
 
 import { format, startOfWeek, eachDayOfInterval, subMonths } from "date-fns";
 import { motion } from "framer-motion";
-import { type Habit, type HabitEntry } from "@/types/habit";
+import { type Habit } from "@/types/habit";
 import {
   Tooltip,
   TooltipContent,
@@ -21,7 +21,6 @@ export function HeatmapView({ habit }: HeatmapViewProps) {
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const weeks = days.reduce<Date[][]>((acc, date) => {
-    const weekStart = startOfWeek(date);
     const weekIndex = Math.floor(
       (date.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
     );

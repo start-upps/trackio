@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pencil, Trash2, Info, Loader2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -77,7 +77,6 @@ export function EditHabitDialog({
 
   useEffect(() => {
     if (open) {
-      // Reset form to initial values when dialog opens
       setName(habit.name);
       setDescription(habit.description);
       setColor(habit.color);
@@ -136,7 +135,7 @@ export function EditHabitDialog({
             Edit Habit
           </DialogTitle>
           <DialogDescription>
-            Make changes to your habit here. Click save when you're done.
+            Make changes to your habit here. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
 

@@ -2,7 +2,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Flame, CheckCircle, Calendar, Percent } from "lucide-react";
+import { Flame, CheckCircle, Percent } from "lucide-react";
 import { calculateHabitStats } from "@/lib/stats";
 import type { Habit } from "@/types/habit";
 

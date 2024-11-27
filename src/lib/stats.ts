@@ -1,6 +1,6 @@
 // src/lib/stats.ts
-import { Habit, HabitEntry } from "@/types/habit";
-import { format, isToday, isSameDay, subDays } from "date-fns";
+import { Habit } from "@/types/habit";
+import { isSameDay, subDays } from "date-fns";
 
 export interface HabitStats {
   currentStreak: number;

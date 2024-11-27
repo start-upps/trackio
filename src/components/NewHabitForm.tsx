@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogClose } from "./ui/dialog";
+import { DialogClose } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { motion } from "framer-motion";

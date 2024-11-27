@@ -20,7 +20,7 @@ export function OptimisticProvider({
   children: React.ReactNode;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [optimisticHabits, addOptimisticHabit] = useOptimistic(
+  const [, addOptimisticHabit] = useOptimistic(
     initialHabits,
     (state: Habit[], { habitId, date }: { habitId: string; date: string }) => {
       return state.map((habit) => {
@@ -99,7 +99,7 @@ export function useOptimisticHabits() {
   const context = useContext(OptimisticContext);
   if (!context) {
     throw new Error(
-      "useOptimisticHabits must be used within an OptimisticProvider",
+      "useOptimisticHabits must be used within an OptimisticProvider"
     );
   }
   return context;
