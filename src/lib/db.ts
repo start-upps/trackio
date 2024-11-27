@@ -2,13 +2,14 @@
 import { PrismaClient } from "@prisma/client";
 
 declare global {
-  let cachedPrisma: PrismaClient | undefined;
+  // eslint-disable-next-line no-var
+  var cachedPrisma: PrismaClient | undefined;
 }
 
-const prisma = global.cachedPrisma || new PrismaClient();
+const prisma = globalThis.cachedPrisma || new PrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
-  global.cachedPrisma = prisma;
+  globalThis.cachedPrisma = prisma;
 }
 
 export const db = prisma;

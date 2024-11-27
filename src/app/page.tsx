@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { HabitList } from "@/components/HabitList";
 import { NewHabitButton } from "@/components/NewHabitButton";
-import { type Habit } from "@/types/habit";
+import { type Habit, type HabitEntry } from "@/types/habit";
+import { Habit as PrismaHabit, HabitEntry as PrismaHabitEntry } from "@prisma/client";
+
+type HabitWithEntries = PrismaHabit & {
+  entries: PrismaHabitEntry[];
+};
 
 export default async function Home() {
   const session = await auth();
@@ -27,11 +32,11 @@ export default async function Home() {
     },
   });
 
-  const serializedHabits: Habit[] = habits.map((habit) => ({
+  const serializedHabits: Habit[] = habits.map((habit: HabitWithEntries) => ({
     ...habit,
     createdAt: habit.createdAt.toISOString(),
     updatedAt: habit.updatedAt.toISOString(),
-    entries: habit.entries.map((entry) => ({
+    entries: habit.entries.map((entry: PrismaHabitEntry) => ({
       ...entry,
       date: entry.date.toISOString(),
       createdAt: entry.createdAt.toISOString(),
