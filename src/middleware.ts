@@ -3,15 +3,22 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function middleware(request: NextRequest) {
-  const session = await auth();
+  try {
+    const session = await auth();
 
-  if (!session && !request.nextUrl.pathname.startsWith("/auth")) {
-    const signInUrl = new URL("/auth/signin", request.url);
-    return NextResponse.redirect(signInUrl);
+    if (!session && !request.nextUrl.pathname.startsWith("/auth")) {
+      const signInUrl = new URL("/auth/signin", request.url);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    console.error("Middleware error:", error);
+    return NextResponse.next();
   }
-
-  return NextResponse.next();
 }
 
 export const config = {
