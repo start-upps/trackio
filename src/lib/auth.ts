@@ -18,10 +18,19 @@ export const authConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          access_type: "offline",
+          prompt: "consent"
+        }
+      }
     }),
   ],
   adapter: PrismaAdapter(db),
   callbacks: {
+    async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
+      return url.startsWith(baseUrl) ? url : baseUrl
+    },
     session({ session, user }: { session: Session; user: { id: string } }) {
       if (session.user && user.id) {
         session.user.id = user.id;
@@ -32,6 +41,7 @@ export const authConfig = {
   pages: {
     signIn: '/auth/signin',
   },
+  secret: process.env.NEXTAUTH_SECRET
 };
 
 export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth(authConfig);
