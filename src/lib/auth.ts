@@ -1,39 +1,37 @@
 // src/lib/auth.ts
-import NextAuth from "next-auth";
+import NextAuth, { DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "./db";
-import type { DefaultSession, NextAuthConfig } from "next-auth";
+import type { Session } from "next-auth";
 
 declare module "next-auth" {
-  interface Session extends DefaultSession {
+  interface Session {
     user: {
-      id: string;
-    } & DefaultSession["user"];
+      id?: string;
+    } & DefaultSession["user"]
   }
 }
 
-export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(db),
+export const authConfig = {
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+  adapter: PrismaAdapter(db),
   callbacks: {
-    session({ session, user }) {
-      if (session.user) {
+    session({ session, user }: { session: Session; user: { id: string } }) {
+      if (session.user && user.id) {
         session.user.id = user.id;
       }
       return session;
-    },
+    }
+  },
+  pages: {
+    signIn: '/auth/signin',
   },
 };
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth(authConfig);
+export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth(authConfig);

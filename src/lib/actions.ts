@@ -14,8 +14,8 @@ export async function createHabit(formData: FormData) {
 
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
-  const color = formData.get("color") as string;
-  const icon = formData.get("icon") as string;
+  const color = formData.get("color") as string || "#E040FB";
+  const icon = formData.get("icon") as string || "📝";
 
   await db.habit.create({
     data: {
@@ -23,7 +23,11 @@ export async function createHabit(formData: FormData) {
       description,
       color,
       icon,
-      userId: session.user.id,
+      user: {
+        connect: {
+          id: session.user.id
+        }
+      }
     },
   });
 
