@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { revalidatePath } from "next/cache"
+import { Prisma } from "@prisma/client"
 
 export const runtime = 'nodejs'
 
@@ -20,6 +22,9 @@ export async function GET() {
           take: 28,
         },
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
     return NextResponse.json(habits)
@@ -36,25 +41,40 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { name, description, color = "#E040FB", icon = "📝" } = await req.json()
+    const body = await req.json()
+    
+    const { name, description, color = "#E040FB", icon = "📝" } = body
 
-    if (!name || !description) {
+    if (!name?.trim() || !description?.trim()) {
       return new NextResponse("Missing required fields", { status: 400 })
     }
 
     const habit = await db.habit.create({
       data: {
-        name,
-        description,
+        name: name.trim(),
+        description: description.trim(),
         color,
         icon,
         userId
       }
     })
 
+    revalidatePath('/')
+
     return NextResponse.json(habit)
   } catch (error) {
     console.error('Error creating habit:', error)
+    
+    if (error instanceof SyntaxError) {
+      return new NextResponse("Invalid request data", { status: 400 })
+    }
+    
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return new NextResponse("A habit with this name already exists", { status: 409 })
+      }
+    }
+
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
