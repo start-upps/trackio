@@ -1,76 +1,45 @@
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+ provider  = "postgresql"
+ url       = env("DATABASE_URL")
+ directUrl = env("DIRECT_URL")
 }
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ provider = "prisma-client-js"
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  habits        Habit[]
+ id       String  @id @default(cuid())
+ email    String  @unique
+ password String
+ name     String?
+ habits   Habit[]
 }
 
 model Habit {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  color       String
-  icon        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  entries     HabitEntry[]
+ id          String       @id @default(cuid())
+ name        String
+ description String
+ color       String
+ icon        String
+ createdAt   DateTime     @default(now())
+ updatedAt   DateTime     @updatedAt
+ userId      String
+ user        User         @relation(fields: [userId], references: [id])
+ entries     HabitEntry[]
 
-  @@index([userId])
+ @@index([userId])
 }
 
 model HabitEntry {
-  id        String   @id @default(cuid())
-  date      DateTime
-  completed Boolean
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  habitId   String
-  habit     Habit    @relation(fields: [habitId], references: [id])
+ id        String   @id @default(cuid())
+ date      DateTime
+ completed Boolean
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ habitId   String
+ habit     Habit    @relation(fields: [habitId], references: [id])
 
-  @@index([habitId])
-  @@unique([habitId, date])
+ @@index([habitId])
+ @@unique([habitId, date])
 }

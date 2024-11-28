@@ -1,48 +1,38 @@
 // src/app/page.tsx
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { HabitList } from "@/components/HabitList";
-import { NewHabitButton } from "@/components/NewHabitButton";
-import { type Habit } from "@/types/habit";
-import { Habit as PrismaHabit, HabitEntry as PrismaHabitEntry } from "@prisma/client";
-
-type HabitWithEntries = PrismaHabit & {
-  entries: PrismaHabitEntry[];
-};
+import { redirect } from "next/navigation"
+import { verifyAuth } from "@/lib/auth"
+import { db } from "@/lib/db"
+import { HabitList } from "@/components/HabitList"
+import { NewHabitButton } from "@/components/NewHabitButton"
+import type { Habit } from "@/types/habit"
 
 export default async function Home() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/auth/signin");
+  const userId = await verifyAuth()
+  if (!userId) {
+    redirect("/auth/signin")
   }
 
   const habits = await db.habit.findMany({
-    where: {
-      userId: session.user.id,
-    },
+    where: { userId },
     include: {
       entries: {
-        orderBy: {
-          date: "desc",
-        },
+        orderBy: { date: "desc" },
         take: 28,
       },
     },
-  });
+  })
 
-  const serializedHabits: Habit[] = habits.map((habit: HabitWithEntries) => ({
+  const serializedHabits: Habit[] = habits.map(habit => ({
     ...habit,
     createdAt: habit.createdAt.toISOString(),
     updatedAt: habit.updatedAt.toISOString(),
-    entries: habit.entries.map((entry: PrismaHabitEntry) => ({
+    entries: habit.entries.map(entry => ({
       ...entry,
       date: entry.date.toISOString(),
       createdAt: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toISOString(),
     })),
-  }));
+  }))
 
   return (
     <main className="container mx-auto max-w-2xl p-4">
@@ -55,5 +45,5 @@ export default async function Home() {
       </div>
       <HabitList habits={serializedHabits} />
     </main>
-  );
+  )
 }

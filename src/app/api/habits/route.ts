@@ -1,34 +1,27 @@
 // src/app/api/habits/route.ts
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { NextResponse } from "next/server"
+import { verifyAuth } from "@/lib/auth"
+import { db } from "@/lib/db"
 
 export async function GET() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    const userId = await verifyAuth()
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
     const habits = await db.habit.findMany({
-      where: {
-        userId: session.user.id,
-      },
+      where: { userId },
       include: {
         entries: {
-          orderBy: {
-            date: "desc",
-          },
+          orderBy: { date: "desc" },
           take: 28,
         },
       },
-    });
+    })
 
-    return NextResponse.json(habits);
+    return NextResponse.json(habits)
   } catch {
-    return new NextResponse("Internal Error", { status: 500 });
+    return new NextResponse("Internal Error", { status: 500 })
   }
 }
-
-export const runtime = "nodejs";
