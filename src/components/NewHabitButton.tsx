@@ -1,26 +1,88 @@
-// src/components/NewHabitButton.tsx
-"use client";
+// src/components/NewHabitForm.tsx
+"use client"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 
-import { Plus } from "lucide-react";
-import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
-import { NewHabitForm } from "./NewHabitForm";
-import { useState } from "react";
+export function NewHabitForm({ onClose }: { onClose?: () => void }) {
+  const [loading, setLoading] = useState(false)
 
-export function NewHabitButton() {
-  const [open, setOpen] = useState(false);
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      name: formData.get("name"),
+      description: formData.get("description"),
+      color: "#E040FB", // default color
+      icon: "📝" // default icon
+    }
+
+    try {
+      const response = await fetch("/api/habits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create habit")
+      }
+
+      toast.success("Habit created successfully!")
+      onClose?.()
+    } catch (error) {
+      toast.error("Failed to create habit")
+      console.error("Error creating habit:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Plus className="h-4 w-4" />
-          <span className="sr-only">New habit</span>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium mb-1">
+          Name
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          className="w-full p-2 bg-gray-800 border border-gray-700 rounded-md"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium mb-1">
+          Description
+        </label>
+        <input
+          type="text"
+          id="description"
+          name="description"
+          required
+          className="w-full p-2 bg-gray-800 border border-gray-700 rounded-md"
+        />
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => onClose?.()}
+          disabled={loading}
+        >
+          Cancel
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <NewHabitForm onClose={() => setOpen(false)} />
-      </DialogContent>
-    </Dialog>
-  );
+        <Button type="submit" disabled={loading}>
+          {loading ? "Creating..." : "Create Habit"}
+        </Button>
+      </div>
+    </form>
+  )
 }
