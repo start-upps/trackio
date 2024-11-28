@@ -1,5 +1,4 @@
 // src/app/api/auth/signup/route.ts
-
 import { hash } from "bcryptjs"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
@@ -11,11 +10,9 @@ export async function POST(req: Request) {
     const { email, password } = await req.json()
     console.log('Signup attempt for:', email)
 
-    // Hash password
     const hashedPassword = await hash(password, 12)
     console.log('Password hashed successfully')
 
-    // Create user
     const user = await db.user.create({
       data: { 
         email, 
@@ -27,14 +24,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       user: { id: user.id, email: user.email }
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Signup error:', error)
-    return new NextResponse(
-      JSON.stringify({ 
-        error: 'Internal Server Error', 
-        details: error?.message || 'Unknown error'
-      }), 
-      { status: 500 }
-    )
+    return new NextResponse('Internal Server Error', { status: 500 })
   }
 }

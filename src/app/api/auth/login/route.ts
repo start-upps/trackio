@@ -11,7 +11,6 @@ export async function POST(req: Request) {
     const { email, password } = await req.json()
     console.log('Login attempt for:', email)
 
-    // Find user
     const user = await db.user.findUnique({
       where: { email }
     })
@@ -23,7 +22,6 @@ export async function POST(req: Request) {
 
     console.log('User found, verifying password')
 
-    // Verify password
     const isValid = await compare(password, user.password)
     if (!isValid) {
       console.log('Invalid password for:', email)
@@ -32,7 +30,6 @@ export async function POST(req: Request) {
 
     console.log('Password verified, creating token')
 
-    // Create token
     const token = await new SignJWT({ userId: user.id })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('24h')
@@ -40,12 +37,10 @@ export async function POST(req: Request) {
 
     console.log('Token created successfully')
 
-    // Create response
     const response = NextResponse.json({ 
       user: { id: user.id, email: user.email } 
     })
 
-    // Set cookie
     response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -56,14 +51,8 @@ export async function POST(req: Request) {
     console.log('Login successful for:', email)
     return response
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Login error:', error)
-    return new NextResponse(
-      JSON.stringify({ 
-        error: 'Internal Server Error', 
-        details: error?.message || 'Unknown error'
-      }), 
-      { status: 500 }
-    )
+    return new NextResponse('Internal Server Error', { status: 500 })
   }
 }
