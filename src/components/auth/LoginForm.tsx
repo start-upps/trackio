@@ -12,15 +12,24 @@ export function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-      headers: { "Content-Type": "application/json" }
-    })
-    
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      
+      if (!res.ok) {
+        const error = await res.text()
+        console.error('Login failed:', error)
+        // Show error to user
+        return
+      }
+  
       router.push("/")
       router.refresh()
+    } catch (error) {
+      console.error('Login error:', error)
     }
   }
 
