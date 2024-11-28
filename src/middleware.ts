@@ -1,43 +1,48 @@
 // src/middleware.ts
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { verifyAuth } from "@/lib/auth"
+import { jwtVerify } from "jose"
 
-// List of public routes that don't require authentication
 const publicRoutes = ['/auth/login', '/auth/signup']
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
+  console.log('Middleware checking path:', path)
 
-  // Allow public routes
   if (publicRoutes.includes(path)) {
+    console.log('Public route detected, allowing access')
     return NextResponse.next()
   }
 
   const token = request.cookies.get('auth-token')
+  console.log('Auth token:', token ? 'present' : 'missing')
   
-  // If no token, redirect to login
   if (!token) {
+    console.log('No token found, redirecting to login')
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
   try {
-    // Verify the token
-    const verifiedToken = await verifyAuth()
-    if (!verifiedToken) {
-      throw new Error('Invalid token')
+    const { payload } = await jwtVerify(
+      token.value,
+      new TextEncoder().encode(process.env.JWT_SECRET || '')
+    )
+
+    if (!payload.userId) {
+      console.log('Invalid token payload, redirecting to login')
+      return NextResponse.redirect(new URL('/auth/login', request.url))
     }
+
+    console.log('Valid token found for user:', payload.userId)
     return NextResponse.next()
-  } catch {
-    // If token is invalid, redirect to login
+  } catch (error) {
+    console.log('Token verification failed:', error)
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 }
 
-// Configure which routes to run middleware on
 export const config = {
   matcher: [
-    // Don't run on public files and api routes
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }
