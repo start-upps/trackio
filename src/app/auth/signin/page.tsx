@@ -1,6 +1,5 @@
 // src/app/auth/signin/page.tsx
-import { signIn } from 'next-auth/react';
-import { Button } from "@/components/ui/button";
+import { SignInButton } from "@/components/SignInButton";
 
 export default function SignIn() {
   return (
@@ -9,12 +8,7 @@ export default function SignIn() {
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white">
           Sign in to Trackio
         </h2>
-        <Button 
-          onClick={() => signIn('google', { callbackUrl: '/' })}
-          className="w-full"
-        >
-          Sign in with Google
-        </Button>
+        <SignInButton />
       </div>
     </div>
   );
