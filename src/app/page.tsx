@@ -3,9 +3,8 @@ import { redirect } from "next/navigation"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { HabitList } from "@/components/HabitList"
-import { NewHabitButton } from "@/components/NewHabitButton"
 import type { Habit } from "@/types/habit"
-
+import NewHabitButton from "@/components/NewHabitButton"
 export default async function Home() {
   console.log('Home page - Verifying authentication')
   const userId = await verifyAuth()
