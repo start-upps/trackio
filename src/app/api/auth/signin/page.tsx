@@ -1,7 +1,6 @@
 // src/app/api/auth/signin/page.tsx
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
 
 export default async function SignIn() {
   const session = await auth();
