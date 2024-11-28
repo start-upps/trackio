@@ -3,35 +3,20 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { db } from "./db"
-import type { Session, User, DefaultSession } from "next-auth"
+import { NextAuthConfig } from "next-auth"
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-    } & DefaultSession["user"]
-  }
-}
-
-export const authOptions = {
+export const config = {
   adapter: PrismaAdapter(db),
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
-  session: {
-    strategy: "jwt" as const,
-  },
+  providers: [Google({
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  })],
   callbacks: {
-    session({ session, user }: { session: Session; user: User }) {
-      if (session.user && user.id) {
-        session.user.id = user.id;
-      }
-      return session;
-    }
+    session: ({ session, user }) => ({
+      ...session,
+      user: { ...session.user, id: user.id }
+    })
   }
-}
+} satisfies NextAuthConfig
 
-export const { auth, signIn, signOut } = NextAuth(authOptions)
+export const { auth, handlers: { GET, POST }, signIn, signOut } = NextAuth(config)
