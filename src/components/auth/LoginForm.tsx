@@ -44,8 +44,8 @@ export function LoginForm() {
       />
       <Button type="submit" className="w-full">Login</Button>
       <p className="text-center text-gray-400">
-        Don't have an account? <Link href="/auth/signup" className="text-blue-500">Sign up</Link>
-      </p>
+    Don&apos;t have an account? <Link href="/auth/signup" className="text-blue-500">Sign up</Link>
+    </p>
     </form>
   )
 }

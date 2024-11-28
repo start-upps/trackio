@@ -1,9 +1,10 @@
 // src/lib/auth.ts
+
 import { db } from "./db"
 import { compare } from "bcryptjs"
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
-
+export const runtime = 'nodejs'
 const key = new TextEncoder().encode(process.env.JWT_SECRET!)
 
 export async function verifyAuth() {

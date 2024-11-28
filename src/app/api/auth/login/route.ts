@@ -1,7 +1,7 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from "next/server"
 import { login } from "@/lib/auth"
-
+export const runtime = 'nodejs' 
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json()
