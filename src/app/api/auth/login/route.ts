@@ -9,6 +9,7 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json()
+    console.log('Login attempt for:', email)
 
     // Find user
     const user = await db.user.findUnique({
@@ -16,20 +17,28 @@ export async function POST(req: Request) {
     })
 
     if (!user) {
-      return new NextResponse("Invalid credentials", { status: 401 })
+      console.log('User not found:', email)
+      return new NextResponse("User not found", { status: 401 })
     }
+
+    console.log('User found, verifying password')
 
     // Verify password
     const isValid = await compare(password, user.password)
     if (!isValid) {
-      return new NextResponse("Invalid credentials", { status: 401 })
+      console.log('Invalid password for:', email)
+      return new NextResponse("Invalid password", { status: 401 })
     }
+
+    console.log('Password verified, creating token')
 
     // Create token
     const token = await new SignJWT({ userId: user.id })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('24h')
       .sign(new TextEncoder().encode(process.env.JWT_SECRET))
+
+    console.log('Token created successfully')
 
     // Create response
     const response = NextResponse.json({ 
@@ -41,12 +50,20 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 // 24 hours
+      maxAge: 60 * 60 * 24 
     })
 
+    console.log('Login successful for:', email)
     return response
-  } catch (error) {
+
+  } catch (error: any) {
     console.error('Login error:', error)
-    return new NextResponse("Internal Server Error", { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Internal Server Error', 
+        details: error?.message || 'Unknown error'
+      }), 
+      { status: 500 }
+    )
   }
 }
