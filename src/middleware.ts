@@ -9,7 +9,9 @@ export const config = {
 };
 
 export function middleware(request: NextRequest) {
-  const signInUrl = new URL("/auth/signin", request.url);
-  return NextResponse.redirect(signInUrl);
+  if (!request.cookies.get("next-auth.session-token")) {
+    const signInUrl = new URL("/auth/signin", request.url);
+    return NextResponse.redirect(signInUrl);
+  }
+  return NextResponse.next();
 }
-
