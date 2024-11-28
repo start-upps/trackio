@@ -1,95 +1,88 @@
 // src/components/NewHabitForm.tsx
-"use client";
+"use client"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 
-import { useState } from "react";
-import { DialogClose } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { toast } from "sonner";
-import { motion } from "framer-motion";
+export function NewHabitForm({ onClose }: { onClose?: () => void }) {
+  const [loading, setLoading] = useState(false)
 
-interface NewHabitFormProps {
-  onClose?: () => void;
-}
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setLoading(true)
 
-export function NewHabitForm({ onClose }: NewHabitFormProps) {
-  const [loading, setLoading] = useState(false);
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      name: formData.get("name"),
+      description: formData.get("description"),
+      color: "#E040FB", // default color
+      icon: "📝" // default icon
+    }
 
-  async function onSubmit(formData: FormData) {
-    setLoading(true);
+    try {
+      const response = await fetch("/api/habits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      })
 
-    const promise = fetch("/api/habits", {
-      method: "POST",
-      body: formData,
-    }).then((res) => {
-      if (!res.ok) throw new Error("Failed to create habit");
-      onClose?.();
-    });
+      if (!response.ok) {
+        throw new Error("Failed to create habit")
+      }
 
-    toast.promise(promise, {
-      loading: "Creating new habit...",
-      success: "Habit created successfully!",
-      error: "Failed to create habit. Please try again.",
-    });
-
-    setLoading(false);
+      toast.success("Habit created successfully!")
+      onClose?.()
+    } catch (error) {
+      toast.error("Failed to create habit")
+      console.error("Error creating habit:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      action={onSubmit}
-    >
-      <div className="space-y-4">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <label htmlFor="name" className="block text-sm font-medium">
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            className="mt-1 block w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2"
-            required
-          />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <label htmlFor="description" className="block text-sm font-medium">
-            Description
-          </label>
-          <input
-            type="text"
-            id="description"
-            name="description"
-            className="mt-1 block w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2"
-            required
-          />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex justify-end gap-3"
-        >
-          <DialogClose asChild>
-            <Button type="button" variant="ghost">
-              Cancel
-            </Button>
-          </DialogClose>
-          <Button type="submit" disabled={loading}>
-            Create Habit
-          </Button>
-        </motion.div>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium mb-1">
+          Name
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          className="w-full p-2 bg-gray-800 border border-gray-700 rounded-md"
+        />
       </div>
-    </motion.form>
-  );
+
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium mb-1">
+          Description
+        </label>
+        <input
+          type="text"
+          id="description"
+          name="description"
+          required
+          className="w-full p-2 bg-gray-800 border border-gray-700 rounded-md"
+        />
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => onClose?.()}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? "Creating..." : "Create Habit"}
+        </Button>
+      </div>
+    </form>
+  )
 }
