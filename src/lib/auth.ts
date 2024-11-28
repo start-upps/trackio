@@ -18,18 +18,21 @@ export const authConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          access_type: "offline",
-          prompt: "consent"
-        }
-      }
     }),
   ],
   adapter: PrismaAdapter(db),
   callbacks: {
     async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
-      return url.startsWith(baseUrl) ? url : baseUrl
+      // Return to signin page if url is null
+      if (!url) return `/auth/signin`
+
+      // Handle relative callbacks
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+
+      // Handle subdomains
+      else if (new URL(url).origin === baseUrl) return url
+
+      return baseUrl
     },
     session({ session, user }: { session: Session; user: { id: string } }) {
       if (session.user && user.id) {
