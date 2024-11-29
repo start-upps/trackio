@@ -2,43 +2,63 @@
 import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { revalidatePath } from "next/cache"
 
-export async function POST(req: Request, { params }: { params: { habitId: string } }) {
+export async function PATCH(
+  req: Request,
+  { params }: { params: { habitId: string } }
+) {
   try {
     const userId = await verifyAuth()
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const habit = await db.habit.findUnique({
+    const { name, description, color, icon, archived } = await req.json()
+
+    const habit = await db.habit.update({
+      where: {
+        id: params.habitId,
+        userId,
+      },
+      data: {
+        ...(name && { name: name.trim() }),
+        ...(description && { description: description.trim() }),
+        ...(color && { color }),
+        ...(icon && { icon }),
+        ...(archived !== undefined && { archived }),
+      },
+    })
+
+    revalidatePath('/')
+    return NextResponse.json(habit)
+  } catch (error) {
+    console.error('Error updating habit:', error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { habitId: string } }
+) {
+  try {
+    const userId = await verifyAuth()
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    await db.habit.delete({
       where: {
         id: params.habitId,
         userId,
       },
     })
 
-    if (!habit) {
-      return new NextResponse("Not Found", { status: 404 })
-    }
-
-    const { date, completed } = await req.json()
-    const entry = await db.habitEntry.upsert({
-      where: {
-        habitId_date: {
-          habitId: params.habitId,
-          date: new Date(date),
-        },
-      },
-      update: { completed },
-      create: {
-        habitId: params.habitId,
-        date: new Date(date),
-        completed,
-      },
-    })
-
-    return NextResponse.json(entry)
-  } catch {
+    revalidatePath('/')
+    return new NextResponse(null, { status: 204 })
+  } catch (error) {
+    console.error('Error deleting habit:', error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }

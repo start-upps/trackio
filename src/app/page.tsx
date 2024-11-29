@@ -5,13 +5,15 @@ import { db } from "@/lib/db"
 import { HabitList } from "@/components/HabitList"
 import type { Habit } from "@/types/habit"
 import NewHabitButton from "@/components/NewHabitButton"
+import { SignOutButton } from "@/components/SignOutButton"
+
 export default async function Home() {
   console.log('Home page - Verifying authentication')
   const userId = await verifyAuth()
   
   if (!userId) {
     console.log('Home page - No authenticated user, redirecting to login')
-    redirect("/auth/login") // Changed from signin to login to match routes
+    redirect("/auth/login")
   }
 
   console.log('Home page - User authenticated, fetching habits')
@@ -25,6 +27,9 @@ export default async function Home() {
           take: 28,
         },
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
     console.log(`Home page - Found ${habits.length} habits`)
@@ -48,7 +53,10 @@ export default async function Home() {
             <h1 className="text-2xl font-bold">Welcome back!</h1>
             <p className="text-gray-400">Track your daily habits</p>
           </div>
-          <NewHabitButton />
+          <div className="flex items-center space-x-4">
+            <NewHabitButton />
+            <SignOutButton />
+          </div>
         </div>
         <HabitList habits={serializedHabits} />
       </main>
@@ -60,6 +68,7 @@ export default async function Home() {
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-red-500">Error</h1>
           <p className="text-gray-400">Unable to load habits. Please try again later.</p>
+          <SignOutButton className="mt-4" />
         </div>
       </main>
     )

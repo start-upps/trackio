@@ -18,6 +18,7 @@ import {
   Settings2,
   Pencil,
   Archive,
+  ArchiveRestore,
   Trash2,
 } from "lucide-react";
 import { HabitStats } from "./HabitStats";
@@ -38,13 +39,17 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { EditHabitDialog } from "./EditHabitDialog";
-
-interface HabitCardProps {
-  habit: Habit;
-  onUpdate?: (id: string, data: Partial<Habit>) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
-  onArchive?: (id: string) => Promise<void>;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 type ViewType = "stats" | "charts" | "heatmap";
 
@@ -54,22 +59,13 @@ const viewIcons = {
   heatmap: { icon: <Grid className="h-4 w-4" />, label: "Activity" },
 };
 
-const slideUpAndFade = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
-export function HabitCard({
-  habit,
-  onUpdate,
-  onDelete,
-  onArchive,
-}: HabitCardProps) {
+export function HabitCard({ habit }: { habit: Habit }) {
   const { toggleHabit, isPending } = useOptimisticHabits();
   const [showStats, setShowStats] = useState(false);
   const [view, setView] = useState<ViewType>("stats");
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   const currentStreak = habit.entries
     .filter((entry) => entry.completed)
@@ -85,41 +81,62 @@ export function HabitCard({
       return diffDays === 1 ? streak + 1 : streak;
     }, 0);
 
-  const handleUpdate = async (data: Partial<Habit>) => {
+  async function handleArchive() {
     try {
-      await onUpdate?.(habit.id, data);
-      toast.success("Habit updated successfully");
-      setIsEditing(false);
-    } catch (error) {
+      const response = await fetch(`/api/habits/${habit.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: !habit.archived }),
+      });
+
+      if (!response.ok) throw new Error();
+      toast.success(habit.archived ? "Habit restored" : "Habit archived");
+      router.refresh();
+    } catch {
       toast.error("Failed to update habit");
     }
-  };
+  }
 
-  const handleDelete = async () => {
+  async function handleDelete() {
     try {
-      await onDelete?.(habit.id);
-      toast.success("Habit deleted successfully");
-    } catch (error) {
+      const response = await fetch(`/api/habits/${habit.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error();
+      toast.success("Habit deleted");
+      router.refresh();
+    } catch {
       toast.error("Failed to delete habit");
     }
-  };
+  }
 
-  const handleArchive = async () => {
+  async function handleUpdate(data: Partial<Habit>) {
     try {
-      await onArchive?.(habit.id);
-      toast.success("Habit archived successfully");
-    } catch (error) {
-      toast.error("Failed to archive habit");
+      const response = await fetch(`/api/habits/${habit.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error();
+      toast.success("Habit updated");
+      setIsEditing(false);
+      router.refresh();
+    } catch {
+      toast.error("Failed to update habit");
     }
-  };
+  }
 
   return (
     <motion.div
       layout
-      {...slideUpAndFade}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       className={cn(
         "bg-gray-800 rounded-lg p-4 transition-all border border-gray-700/50",
         isPending && "opacity-75",
+        habit.archived && "opacity-60",
       )}
     >
       <div className="flex items-center justify-between mb-4">
@@ -190,11 +207,23 @@ export function HabitCard({
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleArchive}>
-                <Archive className="mr-2 h-4 w-4" />
-                Archive
+                {habit.archived ? (
+                  <>
+                    <ArchiveRestore className="mr-2 h-4 w-4" />
+                    Restore
+                  </>
+                ) : (
+                  <>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archive
+                  </>
+                )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-400" onClick={handleDelete}>
+              <DropdownMenuItem
+                className="text-red-400"
+                onClick={() => setIsDeleting(true)}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
@@ -321,6 +350,27 @@ export function HabitCard({
         onOpenChange={setIsEditing}
         onSubmit={handleUpdate}
       />
+
+      <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Habit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this habit? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

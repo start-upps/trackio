@@ -14,6 +14,7 @@ export type Habit = {
   description: string;
   color: string;
   icon: string;
+  archived?: boolean;
   createdAt: string;
   updatedAt: string;
   userId: string;
