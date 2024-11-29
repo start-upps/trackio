@@ -42,6 +42,27 @@ const config: Config = {
         md: "0.375rem",
         sm: "0.25rem",
       },
+      gridTemplateColumns: {
+        '53': 'repeat(53, minmax(0, 1fr))',
+      },
+      spacing: {
+        '0.5': '0.125rem', // For finer control of the grid gap
+        '3': '0.75rem',    // For the contribution squares
+      },
+      animation: {
+        'scale-in': 'scaleIn 0.2s ease-in-out',
+        'fade-in': 'fadeIn 0.2s ease-in-out',
+      },
+      keyframes: {
+        scaleIn: {
+          '0%': { transform: 'scale(0.8)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
