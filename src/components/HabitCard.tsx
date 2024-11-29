@@ -59,7 +59,11 @@ const viewIcons = {
   heatmap: { icon: <Grid className="h-4 w-4" />, label: "Activity" },
 };
 
-export function HabitCard({ habit }: { habit: Habit }) {
+interface HabitCardProps {
+  habit: Habit;
+}
+
+export function HabitCard({ habit }: HabitCardProps) {
   const { toggleHabit, isPending } = useOptimisticHabits();
   const [showStats, setShowStats] = useState(false);
   const [view, setView] = useState<ViewType>("stats");
@@ -138,27 +142,32 @@ export function HabitCard({ habit }: { habit: Habit }) {
         isPending && "opacity-75",
         habit.archived && "opacity-60",
       )}
+      role="region"
+      aria-label={`${habit.name} habit card`}
     >
+      {/* Header Section */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 p-0 rounded-lg"
                   style={{ backgroundColor: habit.color }}
+                  aria-label={`Toggle ${habit.name} completion`}
+                  onClick={() => toggleHabit(habit.id, new Date().toISOString())}
                 >
-                  {habit.icon}
-                </motion.div>
+                  <span aria-hidden="true">{habit.icon}</span>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="text-sm">
                   <p>Click to mark today&apos;s habit</p>
                   {currentStreak > 0 && (
                     <p className="text-green-400 flex items-center gap-1 mt-1">
-                      <Trophy className="h-3 w-3" /> {currentStreak} day streak!
+                      <Trophy className="h-3 w-3" aria-hidden="true" /> {currentStreak} day streak!
                     </p>
                   )}
                 </div>
@@ -166,13 +175,15 @@ export function HabitCard({ habit }: { habit: Habit }) {
             </Tooltip>
           </TooltipProvider>
           <div>
-            <h3 className="font-medium text-white">{habit.name}</h3>
+            <h2 className="font-medium text-white text-lg">{habit.name}</h2>
             <p className="text-sm text-gray-400">{habit.description}</p>
           </div>
         </div>
+
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           {showStats && (
-            <div className="flex gap-1 bg-gray-700 rounded-lg p-1">
+            <div className="flex gap-1 bg-gray-700 rounded-lg p-1" role="toolbar" aria-label="View options">
               {(Object.keys(viewIcons) as ViewType[]).map((viewType) => (
                 <TooltipProvider key={viewType}>
                   <Tooltip>
@@ -180,13 +191,12 @@ export function HabitCard({ habit }: { habit: Habit }) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={cn(
-                          "h-8 w-8",
-                          view === viewType && "bg-gray-600",
-                        )}
+                        className={cn("h-8 w-8", view === viewType && "bg-gray-600")}
                         onClick={() => setView(viewType)}
+                        aria-label={viewIcons[viewType].label}
+                        aria-pressed={view === viewType}
                       >
-                        {viewIcons[viewType].icon}
+                        <span aria-hidden="true">{viewIcons[viewType].icon}</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{viewIcons[viewType].label}</TooltipContent>
@@ -195,70 +205,69 @@ export function HabitCard({ habit }: { habit: Habit }) {
               ))}
             </div>
           )}
+
+          {/* Settings Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings2 className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Habit settings">
+                <Settings2 className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                <Pencil className="mr-2 h-4 w-4" />
+                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleArchive}>
                 {habit.archived ? (
                   <>
-                    <ArchiveRestore className="mr-2 h-4 w-4" />
+                    <ArchiveRestore className="mr-2 h-4 w-4" aria-hidden="true" />
                     Restore
                   </>
                 ) : (
                   <>
-                    <Archive className="mr-2 h-4 w-4" />
+                    <Archive className="mr-2 h-4 w-4" aria-hidden="true" />
                     Archive
                   </>
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-400"
-                onClick={() => setIsDeleting(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
+              <DropdownMenuItem className="text-red-400" onClick={() => setIsDeleting(true)}>
+                <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
+
+          {/* Toggle Stats Button */}
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setShowStats(!showStats)}
-            className="p-2 rounded-lg hover:bg-gray-700"
+            className="h-8 w-8"
+            aria-label={showStats ? "Hide statistics" : "Show statistics"}
+            aria-expanded={showStats}
           >
             {showStats ? (
-              <ChevronUp className="w-4 h-4" />
+              <ChevronUp className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-4 h-4" aria-hidden="true" />
             )}
-          </motion.button>
+          </Button>
+
+          {/* Complete Today Button */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                <Button
+                  onClick={() => toggleHabit(habit.id, new Date().toISOString())}
+                  variant="ghost"
+                  size="icon"
+                  disabled={isPending}
+                  aria-label="Mark today's habit as complete"
                 >
-                  <Button
-                    onClick={() =>
-                      toggleHabit(habit.id, new Date().toISOString())
-                    }
-                    variant="ghost"
-                    size="icon"
-                    disabled={isPending}
-                  >
-                    ✓
-                  </Button>
-                </motion.div>
+                  <span aria-hidden="true">✓</span>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Mark today&apos;s habit as complete</TooltipContent>
             </Tooltip>
@@ -266,37 +275,33 @@ export function HabitCard({ habit }: { habit: Habit }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-1" role="grid" aria-label="Habit completion calendar">
         <AnimatePresence>
           {Array.from({ length: 28 }).map((_, i) => {
             const date = new Date();
             date.setDate(date.getDate() - (27 - i));
             const dateStr = date.toISOString();
             const entry = habit.entries.find(
-              (entry) =>
-                format(new Date(entry.date), "yyyy-MM-dd") ===
-                format(date, "yyyy-MM-dd"),
+              (entry) => format(new Date(entry.date), "yyyy-MM-dd") === format(date, "yyyy-MM-dd"),
             );
             const isCurrentDay = isToday(date);
+            const formattedDate = format(date, "MMMM d, yyyy");
 
             return (
               <TooltipProvider key={dateStr}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <motion.button
-                      layout
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.8, opacity: 0 }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
+                    <Button
+                      variant="ghost"
                       onClick={() => toggleHabit(habit.id, dateStr)}
                       disabled={isPending}
+                      aria-label={`${entry?.completed ? 'Completed' : 'Not completed'} on ${formattedDate}`}
+                      aria-pressed={entry?.completed}
                       className={cn(
-                        "aspect-square rounded-sm transition-all relative",
+                        "aspect-square p-0 rounded-sm",
                         isPending && "cursor-not-allowed",
-                        isCurrentDay &&
-                          "ring-2 ring-white ring-offset-2 ring-offset-gray-800",
+                        isCurrentDay && "ring-2 ring-white ring-offset-2 ring-offset-gray-800"
                       )}
                       style={{
                         backgroundColor: habit.color,
@@ -306,13 +311,11 @@ export function HabitCard({ habit }: { habit: Habit }) {
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-sm">
-                      <p>{format(date, "MMMM d, yyyy")}</p>
-                      <p
-                        className={cn(
-                          "mt-1",
-                          entry?.completed ? "text-green-400" : "text-gray-400",
-                        )}
-                      >
+                      <p>{formattedDate}</p>
+                      <p className={cn(
+                        "mt-1",
+                        entry?.completed ? "text-green-400" : "text-gray-400"
+                      )}>
                         {entry?.completed ? "Completed" : "Not completed"}
                       </p>
                     </div>
@@ -324,6 +327,7 @@ export function HabitCard({ habit }: { habit: Habit }) {
         </AnimatePresence>
       </div>
 
+      {/* Stats Section */}
       <AnimatePresence mode="wait">
         {showStats && (
           <motion.div
@@ -332,6 +336,8 @@ export function HabitCard({ habit }: { habit: Habit }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
+            role="region"
+            aria-label={`${habit.name} ${view} view`}
           >
             {view === "stats" ? (
               <HabitStats habit={habit} />
@@ -344,6 +350,7 @@ export function HabitCard({ habit }: { habit: Habit }) {
         )}
       </AnimatePresence>
 
+      {/* Edit Dialog */}
       <EditHabitDialog
         habit={habit}
         open={isEditing}
@@ -351,13 +358,13 @@ export function HabitCard({ habit }: { habit: Habit }) {
         onSubmit={handleUpdate}
       />
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Habit</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this habit? This action cannot be
-              undone.
+              Are you sure you want to delete this habit? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
