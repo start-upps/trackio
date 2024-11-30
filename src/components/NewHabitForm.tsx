@@ -20,28 +20,41 @@ const COLORS = [
 
 const ICONS = ["📝", "💪", "🎯", "📚", "🏃‍♂️", "🧘‍♂️", "💻", "🎨", "🎵", "✍️"];
 
+const initialFormState = {
+  name: "",
+  description: "",
+  color: "#E040FB",
+  icon: "📝"
+};
+
 export function NewHabitForm({ onClose }: { onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    color: "#E040FB",
-    icon: "📝"
-  });
+  const [formData, setFormData] = useState(initialFormState);
   const router = useRouter();
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setLoading(false);
+  };
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
-
+    
     const { name, description, color, icon } = formData;
+    const trimmedName = name.trim();
+    const trimmedDescription = description.trim();
 
     // Validate data
-    if (!name.trim() || !description.trim()) {
+    if (!trimmedName || !trimmedDescription) {
       toast.error("Please fill in all fields");
-      setLoading(false);
       return;
     }
+
+    // Start loading state immediately
+    setLoading(true);
+
+    // Show optimistic feedback
+    const loadingToast = toast.loading("Creating habit...");
 
     try {
       const response = await fetch("/api/habits", {
@@ -49,23 +62,58 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ name, description, color, icon })
+        body: JSON.stringify({ 
+          name: trimmedName, 
+          description: trimmedDescription, 
+          color, 
+          icon 
+        })
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to create habit");
       }
 
-      toast.success("Habit created successfully!");
-      router.refresh();
+      // Close the form first
       onClose?.();
+      
+      // Reset form state
+      resetForm();
+      
+      // Update success toast
+      toast.success("Habit created successfully!", {
+        id: loadingToast
+      });
+      
+      // Refresh the page data last
+      router.refresh();
+      
     } catch (error) {
       console.error("Error creating habit:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create habit");
-    } finally {
+      
+      // Update error toast
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create habit",
+        { id: loadingToast }
+      );
+      
+      // Keep the form open on error
       setLoading(false);
     }
   }
+
+  const handleInputChange = (field: keyof typeof initialFormState, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    onClose?.();
+  };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -101,14 +149,16 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
           <input
             type="text"
             value={formData.name}
-            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            onChange={e => handleInputChange('name', e.target.value)}
             required
             maxLength={50}
+            disabled={loading}
             className={cn(
               "w-full px-3 py-2 bg-gray-800/50 rounded-xl",
               "border border-gray-700/50",
               "focus:border-gray-600 focus:ring-1 focus:ring-gray-600",
-              "transition-colors duration-200"
+              "transition-colors duration-200",
+              loading && "opacity-50 cursor-not-allowed"
             )}
             placeholder="e.g., Morning Meditation"
           />
@@ -121,14 +171,16 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
           <input
             type="text"
             value={formData.description}
-            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={e => handleInputChange('description', e.target.value)}
             required
             maxLength={100}
+            disabled={loading}
             className={cn(
               "w-full px-3 py-2 bg-gray-800/50 rounded-xl",
               "border border-gray-700/50",
               "focus:border-gray-600 focus:ring-1 focus:ring-gray-600",
-              "transition-colors duration-200"
+              "transition-colors duration-200",
+              loading && "opacity-50 cursor-not-allowed"
             )}
             placeholder="e.g., Meditate for 10 minutes every morning"
           />
@@ -143,12 +195,14 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
               <motion.button
                 key={color}
                 type="button"
+                disabled={loading}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setFormData(prev => ({ ...prev, color }))}
+                onClick={() => handleInputChange('color', color)}
                 className={cn(
                   "w-8 h-8 rounded-lg transition-all duration-200",
-                  formData.color === color && "ring-2 ring-white shadow-lg"
+                  formData.color === color && "ring-2 ring-white shadow-lg",
+                  loading && "opacity-50 cursor-not-allowed"
                 )}
                 style={{ backgroundColor: color }}
               />
@@ -165,13 +219,15 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
               <motion.button
                 key={icon}
                 type="button"
+                disabled={loading}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setFormData(prev => ({ ...prev, icon }))}
+                onClick={() => handleInputChange('icon', icon)}
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center",
                   "bg-gray-800 transition-all duration-200",
-                  formData.icon === icon && "ring-2 ring-white shadow-lg bg-gray-700"
+                  formData.icon === icon && "ring-2 ring-white shadow-lg bg-gray-700",
+                  loading && "opacity-50 cursor-not-allowed"
                 )}
               >
                 {icon}
@@ -185,7 +241,7 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
         <Button
           type="button"
           variant="ghost"
-          onClick={() => onClose?.()}
+          onClick={handleCancel}
           disabled={loading}
           className="rounded-xl"
         >

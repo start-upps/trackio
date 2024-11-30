@@ -1,12 +1,15 @@
 // src/components/HabitList.tsx
 "use client";
 
+import { useState } from "react";
 import { HabitCard } from "./HabitCard";
 import type { Habit, HabitStats } from "@/types/habit";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, ListPlus } from "lucide-react";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface HabitListProps {
   habits: Habit[];
@@ -29,7 +32,98 @@ const containerItem = {
   exit: { opacity: 0, y: -20 },
 };
 
-export function HabitList({ habits }: HabitListProps) {
+export function HabitList({ habits: initialHabits }: HabitListProps) {
+  const [habits, setHabits] = useState(initialHabits);
+  const router = useRouter();
+
+  const handleDelete = async (habitId: string) => {
+    // Optimistically remove the habit from the UI
+    setHabits(current => current.filter(h => h.id !== habitId));
+    
+    try {
+      const response = await fetch(`/api/habits/${habitId}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete habit");
+      }
+      
+      toast.success("Habit deleted successfully");
+      router.refresh();
+    } catch (error) {
+      console.error("Error deleting habit:", error);
+      // Revert optimistic update on error
+      setHabits(initialHabits);
+      toast.error("Failed to delete habit");
+    }
+  };
+
+  const handleArchive = async (habitId: string) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+
+    // Optimistically update the UI
+    setHabits(current =>
+      current.map(h =>
+        h.id === habitId
+          ? { ...h, archived: !h.archived }
+          : h
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/habits/${habitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: !habit.archived }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to archive habit");
+      }
+
+      toast.success(habit.archived ? "Habit restored" : "Habit archived");
+      router.refresh();
+    } catch (error) {
+      console.error("Error archiving habit:", error);
+      // Revert optimistic update on error
+      setHabits(initialHabits);
+      toast.error("Failed to update habit");
+    }
+  };
+
+  const handleUpdate = async (habitId: string, data: Partial<Habit>) => {
+    // Optimistically update the UI
+    setHabits(current =>
+      current.map(habit =>
+        habit.id === habitId
+          ? { ...habit, ...data }
+          : habit
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/habits/${habitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update habit");
+      }
+
+      toast.success("Habit updated successfully");
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating habit:", error);
+      // Revert optimistic update on error
+      setHabits(initialHabits);
+      toast.error("Failed to update habit");
+    }
+  };
+
   if (habits.length === 0) {
     return (
       <motion.div
@@ -83,7 +177,12 @@ export function HabitList({ habits }: HabitListProps) {
                 layout: { type: "spring", stiffness: 300, damping: 30 }
               }}
             >
-              <HabitCard habit={habit} />
+              <HabitCard 
+                habit={habit}
+                onDelete={handleDelete}
+                onArchive={handleArchive}
+                onUpdate={handleUpdate}
+              />
             </motion.div>
           ))}
         </AnimatePresence>
