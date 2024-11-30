@@ -2,28 +2,22 @@
 "use client";
 
 import { useState } from "react";
-import { format, isToday, isAfter } from "date-fns";
+import { format, isToday } from "date-fns";
 import { Button } from "./ui/button";
 import { type Habit } from "@/types/habit";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  ChevronDown,
-  ChevronUp,
-  Calendar,
-  BarChart2,
-  Grid,
-  Trophy,
-  Settings2,
   Pencil,
   Archive,
   Trash2,
+  MoreVertical,
+  Check,
 } from "lucide-react";
-import { HabitStats } from "./HabitStats";
-import { HabitCharts } from "./HabitCharts";
-import { HeatmapView } from "./HeatmapView";
+import { EditHabitDialog } from "./EditHabitDialog";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import {
   Tooltip,
   TooltipContent,
@@ -37,7 +31,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { EditHabitDialog } from "./EditHabitDialog";
 
 interface HabitCardProps {
   habit: Habit;
@@ -46,74 +39,86 @@ interface HabitCardProps {
   onArchive?: (id: string) => Promise<void>;
 }
 
-type ViewType = "stats" | "charts" | "heatmap";
-
-const viewIcons = {
-  stats: { icon: <Calendar className="h-4 w-4" />, label: "Statistics" },
-  charts: { icon: <BarChart2 className="h-4 w-4" />, label: "Analytics" },
-  heatmap: { icon: <Grid className="h-4 w-4" />, label: "Activity" },
-};
-
 export function HabitCard({
   habit,
   onUpdate,
   onDelete,
   onArchive,
 }: HabitCardProps) {
+  const router = useRouter();
   const { toggleHabit, isPending } = useOptimisticHabits();
-  const [showStats, setShowStats] = useState(false);
-  const [view, setView] = useState<ViewType>("stats");
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
-  const isTodayCompleted = habit.entries.some(
-    entry => isToday(new Date(entry.date)) && entry.completed
-  );
+  // Generate grid data for the 8x7 layout
+  const gridData = Array.from({ length: 56 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (55 - i));
+    const dateStr = format(date, "yyyy-MM-dd");
+    return {
+      date,
+      dateStr,
+      isCompleted: habit.entries.some(
+        entry => format(new Date(entry.date), "yyyy-MM-dd") === dateStr && entry.completed
+      ),
+      isToday: isToday(date)
+    };
+  });
 
-  const currentStreak = habit.entries
-    .filter((entry) => entry.completed)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .reduce((streak, entry, index, arr) => {
-      if (index === 0 && isAfter(new Date(entry.date), new Date())) return 0;
-      if (index === 0) return 1;
-      const prevDate = new Date(arr[index - 1].date);
-      const currentDate = new Date(entry.date);
-      const diffDays = Math.floor(
-        (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      return diffDays === 1 ? streak + 1 : streak;
-    }, 0);
-
-  const handleUpdate = async (data: Partial<Habit>) => {
+  const handleComplete = async () => {
+    const today = new Date().toISOString();
     try {
-      await onUpdate?.(habit.id, data);
-      toast.success("Habit updated successfully");
-      setIsEditing(false);
+      await toggleHabit(habit.id, today);
+      router.refresh(); // Refresh after toggle
     } catch (error) {
       toast.error("Failed to update habit");
     }
   };
 
-  const handleDelete = async () => {
+  const handleUpdate = async (data: Partial<Habit>) => {
+    if (!onUpdate) return;
+    
     try {
-      await onDelete?.(habit.id);
+      setIsEditing(true);
+      await onUpdate(habit.id, data);
+      toast.success("Habit updated successfully");
+      router.refresh(); // Refresh after update
+    } catch (error) {
+      toast.error("Failed to update habit");
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await onDelete(habit.id);
       toast.success("Habit deleted successfully");
+      router.refresh(); // Refresh after delete
     } catch (error) {
       toast.error("Failed to delete habit");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleArchive = async () => {
+    if (!onArchive) return;
+
     try {
-      await onArchive?.(habit.id);
-      toast.success("Habit archived successfully");
+      setIsArchiving(true);
+      await onArchive(habit.id);
+      toast.success(`Habit ${habit.archived ? 'unarchived' : 'archived'} successfully`);
+      router.refresh(); // Refresh after archive
     } catch (error) {
       toast.error("Failed to archive habit");
+    } finally {
+      setIsArchiving(false);
     }
-  };
-
-  const handleToggleToday = () => {
-    const today = new Date().toISOString();
-    toggleHabit(habit.id, today);
   };
 
   return (
@@ -121,221 +126,128 @@ export function HabitCard({
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
       className={cn(
-        "bg-gray-900 rounded-xl p-6 shadow-lg",
-        "border border-gray-800/50 hover:border-gray-700/50",
+        "bg-gray-900/95 rounded-xl p-4 shadow-lg",
+        "border border-gray-800/50",
         "transition-all duration-200",
-        isPending && "opacity-75"
+        (isPending || isDeleting || isArchiving) && "opacity-75"
       )}
     >
-      {/* Header Section */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl cursor-pointer"
-                  style={{ backgroundColor: habit.color }}
-                  onClick={handleToggleToday}
-                >
-                  {habit.icon}
-                </motion.div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="text-sm">
-                  <p>Click to mark today&apos;s habit</p>
-                  {currentStreak > 0 && (
-                    <p className="text-green-400 flex items-center gap-1 mt-1">
-                      <Trophy className="h-3 w-3" /> {currentStreak} day streak!
-                    </p>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center",
+              "text-lg shadow-inner"
+            )}
+            style={{ 
+              backgroundColor: `${habit.color}20`,
+              color: habit.color
+            }}
+          >
+            {habit.icon}
+          </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">{habit.name}</h3>
-            <p className="text-sm text-gray-400">{habit.description}</p>
+            <h3 className="font-medium text-white">{habit.name}</h3>
+            <p className="text-sm text-gray-400 truncate max-w-[200px]">
+              {habit.description}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {showStats && (
-            <div className="flex gap-1 bg-gray-800 rounded-xl p-1.5">
-              {(Object.keys(viewIcons) as ViewType[]).map((viewType) => (
-                <TooltipProvider key={viewType}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "h-8 w-8 rounded-lg",
-                          view === viewType && "bg-gray-700"
-                        )}
-                        onClick={() => setView(viewType)}
-                      >
-                        {viewIcons[viewType].icon}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{viewIcons[viewType].label}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleComplete}
+                  className={cn(
+                    "rounded-xl w-10 h-10",
+                    "transition-all duration-200",
+                    gridData[gridData.length - 1].isCompleted &&
+                      "bg-opacity-20 text-white"
+                  )}
+                  style={{
+                    backgroundColor: gridData[gridData.length - 1].isCompleted 
+                      ? habit.color 
+                      : "transparent"
+                  }}
+                >
+                  <Check 
+                    className={cn(
+                      "w-5 h-5 transition-all",
+                      gridData[gridData.length - 1].isCompleted && "text-white"
+                    )}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Mark today&apos;s habit</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                <Settings2 className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-xl"
+                disabled={isDeleting || isArchiving}
+              >
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => setIsEditing(true)}>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => setIsEditing(true)}
+                disabled={isDeleting || isArchiving}
+              >
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleArchive}>
+              <DropdownMenuItem 
+                onClick={handleArchive}
+                disabled={isDeleting || isArchiving}
+              >
                 <Archive className="mr-2 h-4 w-4" />
-                Archive
+                {habit.archived ? 'Unarchive' : 'Archive'}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-400" onClick={handleDelete}>
+              <DropdownMenuItem 
+                className="text-red-400" 
+                onClick={handleDelete}
+                disabled={isDeleting || isArchiving}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-lg"
-            onClick={() => setShowStats(!showStats)}
-          >
-            <motion.div
-              animate={{ rotate: showStats ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChevronDown className="h-4 w-4" />
-            </motion.div>
-          </Button>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleToggleToday}
-                  variant="ghost"
-                  size="icon"
-                  disabled={isPending}
-                  className={cn(
-                    "rounded-lg h-10 w-10",
-                    isTodayCompleted && "text-green-400"
-                  )}
-                >
-                  <motion.div
-                    initial={false}
-                    animate={{
-                      scale: isTodayCompleted ? 1.1 : 1,
-                    }}
-                    transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                  >
-                    {isTodayCompleted ? "✓" : "○"}
-                  </motion.div>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isTodayCompleted
-                  ? "Completed for today!"
-                  : "Mark today's habit as complete"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </div>
 
-      {/* Completion Grid */}
-      <div className="grid grid-cols-7 gap-1.5 mb-4">
-        <AnimatePresence>
-          {Array.from({ length: 28 }).map((_, i) => {
-            const date = new Date();
-            date.setDate(date.getDate() - (27 - i));
-            const dateStr = date.toISOString();
-            const entry = habit.entries.find(
-              (entry) =>
-                format(new Date(entry.date), "yyyy-MM-dd") ===
-                format(date, "yyyy-MM-dd")
-            );
-            const isCurrentDay = isToday(date);
-
-            return (
-              <TooltipProvider key={dateStr}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <motion.div
-                      whileHover={{ scale: 1.2 }}
-                      onClick={() => toggleHabit(habit.id, dateStr)}
-                      className={cn(
-                        "aspect-square rounded-md cursor-pointer",
-                        "transition-all duration-200",
-                        isCurrentDay &&
-                          "ring-2 ring-white ring-offset-2 ring-offset-gray-900"
-                      )}
-                      style={{
-                        backgroundColor: habit.color,
-                        opacity: entry?.completed ? 1 : 0.15,
-                      }}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="text-sm">
-                      <p>{format(date, "MMMM d, yyyy")}</p>
-                      <p
-                        className={cn(
-                          "mt-1",
-                          entry?.completed ? "text-green-400" : "text-gray-400"
-                        )}
-                      >
-                        {entry?.completed ? "Completed" : "Not completed"}
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
-        </AnimatePresence>
+      {/* Grid */}
+      <div className="grid grid-cols-7 gap-[2px]">
+        {gridData.map((day) => (
+          <motion.div
+            key={day.dateStr}
+            whileHover={{ scale: 1.2 }}
+            onClick={() => toggleHabit(habit.id, day.date.toISOString())}
+            className={cn(
+              "aspect-square rounded-[2px] cursor-pointer",
+              "transition-all duration-200"
+            )}
+            style={{
+              backgroundColor: habit.color,
+              opacity: day.isCompleted ? 1 : 0.15
+            }}
+          />
+        ))}
       </div>
 
-      {/* Stats Section */}
-      <AnimatePresence mode="wait">
-        {showStats && (
-          <motion.div
-            key={view}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="pt-4 border-t border-gray-800"
-          >
-            {view === "stats" ? (
-              <HabitStats habit={habit} />
-            ) : view === "charts" ? (
-              <HabitCharts habit={habit} />
-            ) : (
-              <HeatmapView habit={habit} />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* Edit Dialog */}
       <EditHabitDialog
         habit={habit}
         open={isEditing}
