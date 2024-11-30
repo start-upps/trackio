@@ -1,5 +1,4 @@
 // src/app/api/habits/[habitId]/route.ts
-// src/app/api/habits/[habitId]/route.ts
 import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
@@ -48,6 +47,14 @@ export async function PATCH(
         userId,
       },
       data: sanitizedData,
+      include: {
+        entries: {
+          orderBy: {
+            date: 'desc'
+          },
+          take: 28,
+        },
+      },
     })
 
     revalidatePath('/')
@@ -72,7 +79,7 @@ export async function PATCH(
   }
 }
 
-// Delete habit
+// Delete habit - simplified with cascading delete
 export async function DELETE(
   _req: Request,
   { params }: { params: { habitId: string } }
@@ -83,7 +90,7 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // First verify habit exists and belongs to user
+    // Verify habit exists and belongs to user
     const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
@@ -95,27 +102,18 @@ export async function DELETE(
       return new NextResponse("Habit not found", { status: 404 })
     }
 
-    // Use transaction to ensure all related data is deleted
-    await db.$transaction([
-      // First delete all associated entries
-      db.habitEntry.deleteMany({
-        where: {
-          habitId: params.habitId,
-        },
-      }),
-      // Then delete the habit itself
-      db.habit.delete({
-        where: {
-          id: params.habitId,
-          userId,
-        },
-      }),
-    ])
+    // With cascading delete, this will automatically delete related entries
+    await db.habit.delete({
+      where: {
+        id: params.habitId,
+        userId,
+      },
+    })
 
     revalidatePath('/')
     return NextResponse.json({
       success: true,
-      message: "Habit deleted successfully"
+      message: "Habit and all related entries deleted successfully"
     })
   } catch (error) {
     console.error('Error deleting habit:', error)
@@ -123,9 +121,6 @@ export async function DELETE(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         return new NextResponse("Habit not found", { status: 404 })
-      }
-      if (error.code === 'P2003') {
-        return new NextResponse("Cannot delete habit with existing entries", { status: 400 })
       }
     }
     

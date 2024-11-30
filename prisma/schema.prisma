@@ -4,15 +4,22 @@ datasource db {
 }
 
 generator client {
- provider = "prisma-client-js"
+  provider = "prisma-client-js"
+  // Add preview features if needed
+  previewFeatures = []
 }
 
 model User {
- id       String  @id @default(cuid())
- email    String  @unique
- password String
- name     String?
- habits   Habit[]
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  habits    Habit[]
+
+  @@map("users") // Explicit table naming
+  @@index([email])
 }
 
 model Habit {
@@ -25,21 +32,26 @@ model Habit {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   userId      String
-  user        User         @relation(fields: [userId], references: [id])
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries     HabitEntry[]
 
+  @@map("habits")
   @@index([userId])
+  @@index([archived])
+  @@index([createdAt])
 }
 
 model HabitEntry {
- id        String   @id @default(cuid())
- date      DateTime
- completed Boolean
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
- habitId   String
- habit     Habit    @relation(fields: [habitId], references: [id])
+  id        String   @id @default(cuid())
+  date      DateTime
+  completed Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
- @@index([habitId])
- @@unique([habitId, date])
+  @@map("habit_entries")
+  @@index([habitId])
+  @@index([date])
+  @@unique([habitId, date])
 }
