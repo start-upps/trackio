@@ -4,7 +4,7 @@ import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
-export async function PATCH(
+export async function POST(
   req: Request,
   { params }: { params: { habitId: string } }
 ) {
@@ -14,51 +14,52 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { name, description, color, icon, archived } = await req.json()
+    const { date } = await req.json()
 
-    const habit = await db.habit.update({
+    // Verify habit belongs to user
+    const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
         userId,
       },
-      data: {
-        ...(name && { name: name.trim() }),
-        ...(description && { description: description.trim() }),
-        ...(color && { color }),
-        ...(icon && { icon }),
-        ...(archived !== undefined && { archived }),
-      },
     })
 
-    revalidatePath('/')
-    return NextResponse.json(habit)
-  } catch (error) {
-    console.error('Error updating habit:', error)
-    return new NextResponse("Internal Error", { status: 500 })
-  }
-}
-
-export async function DELETE(
-  req: Request,
-  { params }: { params: { habitId: string } }
-) {
-  try {
-    const userId = await verifyAuth()
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+    if (!habit) {
+      return new NextResponse("Habit not found", { status: 404 })
     }
 
-    await db.habit.delete({
+    // Find existing entry
+    const existingEntry = await db.habitEntry.findUnique({
       where: {
-        id: params.habitId,
-        userId,
+        habitId_date: {
+          habitId: params.habitId,
+          date: new Date(date),
+        },
       },
     })
 
+    if (existingEntry) {
+      // If entry exists, delete it
+      await db.habitEntry.delete({
+        where: {
+          id: existingEntry.id,
+        },
+      })
+    } else {
+      // If no entry exists, create one
+      await db.habitEntry.create({
+        data: {
+          habitId: params.habitId,
+          date: new Date(date),
+          completed: true,
+        },
+      })
+    }
+
     revalidatePath('/')
-    return new NextResponse(null, { status: 204 })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting habit:', error)
+    console.error('Error toggling habit entry:', error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }

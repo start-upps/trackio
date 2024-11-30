@@ -22,6 +22,8 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { useOptimisticHabits } from "./providers/OptimisticProvider";
+import { toast } from "sonner";
 
 interface HeatmapViewProps {
   habit: Habit;
@@ -29,6 +31,7 @@ interface HeatmapViewProps {
 
 export function HeatmapView({ habit }: HeatmapViewProps) {
   const [yearOffset, setYearOffset] = useState(0);
+  const { toggleHabit } = useOptimisticHabits();
   
   const year = useMemo(() => subYears(new Date(), yearOffset), [yearOffset]);
   const startDate = startOfYear(year);
@@ -49,6 +52,14 @@ export function HeatmapView({ habit }: HeatmapViewProps) {
     },
     [habit.entries]
   );
+
+  const handleToggleHabit = useCallback(async (date: Date) => {
+    try {
+      await toggleHabit(habit.id, date.toISOString());
+    } catch (error) {
+      toast.error("Failed to update habit");
+    }
+  }, [habit.id, toggleHabit]);
 
   // Get unique months for the header
   const months = Array.from(
@@ -134,6 +145,7 @@ export function HeatmapView({ habit }: HeatmapViewProps) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <motion.div
+                          onClick={() => handleToggleHabit(day)}
                           initial={{ scale: 0.8, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           whileHover={{ scale: 1.2 }}

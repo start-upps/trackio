@@ -2,12 +2,13 @@
 "use client";
 
 import { HabitCard } from "./HabitCard";
-import type { Habit } from "@/types/habit";
+import type { Habit, HabitStats } from "@/types/habit"; // Add HabitStats import
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface HabitListProps {
   habits: Habit[];
+  initialStats?: Record<string, HabitStats>;
 }
 
 const container = {

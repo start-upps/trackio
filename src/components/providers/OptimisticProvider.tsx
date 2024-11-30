@@ -1,16 +1,23 @@
 // src/components/providers/OptimisticProvider.tsx
 "use client";
-
-import { createContext, useContext, useOptimistic, useTransition } from "react";
-import type { Habit, HabitEntry } from "@/types/habit";
+import { createContext, useContext, useOptimistic, useTransition, useState, useEffect } from "react";
+import type { Habit, HabitEntry, ToggleHabitResponse } from "@/types/habit";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface OptimisticContextType {
   toggleHabit: (habitId: string, date: string) => Promise<void>;
   isPending: boolean;
+  retryFailedUpdates: () => Promise<void>;
 }
 
 const OptimisticContext = createContext<OptimisticContextType | null>(null);
+
+interface FailedUpdate {
+  habitId: string;
+  date: string;
+  retryCount: number;
+}
 
 export function OptimisticProvider({
   habits: initialHabits,
@@ -20,33 +27,24 @@ export function OptimisticProvider({
   children: React.ReactNode;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [, addOptimisticHabit] = useOptimistic(
+  const [failedUpdates, setFailedUpdates] = useState<FailedUpdate[]>([]);
+  
+  const [optimisticHabits, addOptimisticHabit] = useOptimistic(
     initialHabits,
-    (state: Habit[], { habitId, date }: { habitId: string; date: string }) => {
+    (state: Habit[], { habitId, date, isRemoving = false }: { habitId: string; date: string; isRemoving?: boolean }) => {
       return state.map((habit) => {
         if (habit.id !== habitId) return habit;
 
         const existingEntry = habit.entries.find(
-          (entry) => entry.date === date,
+          (entry) => format(new Date(entry.date), 'yyyy-MM-dd') === format(new Date(date), 'yyyy-MM-dd')
         );
 
         if (existingEntry) {
-          toast.promise(Promise.resolve(), {
-            loading: "Removing habit completion...",
-            success: "Habit completion removed",
-            error: "Failed to remove habit completion",
-          });
           return {
             ...habit,
             entries: habit.entries.filter((entry) => entry.date !== date),
           };
         }
-
-        toast.promise(Promise.resolve(), {
-          loading: "Marking habit as complete...",
-          success: "Habit marked as complete",
-          error: "Failed to mark habit as complete",
-        });
 
         const newEntry: HabitEntry = {
           id: `temp-${date}`,
@@ -65,11 +63,28 @@ export function OptimisticProvider({
     },
   );
 
-  const toggleHabit = async (habitId: string, date: string) => {
-    startTransition(async () => {
-      addOptimisticHabit({ habitId, date });
+  const addFailedUpdate = (habitId: string, date: string) => {
+    setFailedUpdates(prev => [
+      ...prev,
+      { habitId, date, retryCount: 0 }
+    ]);
+  };
 
+  const removeFailedUpdate = (habitId: string, date: string) => {
+    setFailedUpdates(prev => 
+      prev.filter(update => 
+        !(update.habitId === habitId && update.date === date)
+      )
+    );
+  };
+
+  const toggleHabit = async (habitId: string, date: string) => {
+    const toastId = toast.loading("Updating habit...");
+
+    startTransition(async () => {
       try {
+        addOptimisticHabit({ habitId, date });
+
         const response = await fetch(`/api/habits/${habitId}/entries`, {
           method: "POST",
           headers: {
@@ -81,16 +96,73 @@ export function OptimisticProvider({
         if (!response.ok) {
           throw new Error("Failed to toggle habit");
         }
+
+        const result: ToggleHabitResponse = await response.json();
+        
+        if (result.success) {
+          removeFailedUpdate(habitId, date);
+          toast.success(
+            result.entry?.completed 
+              ? "Habit marked as complete" 
+              : "Habit completion removed",
+            { id: toastId }
+          );
+        } else {
+          throw new Error(result.error || "Failed to update habit");
+        }
       } catch (error) {
-        toast.error("Something went wrong. Please try again.");
         console.error("Error toggling habit:", error);
+        addFailedUpdate(habitId, date);
+        toast.error("Failed to update habit. Will retry automatically.", {
+          id: toastId,
+          duration: 3000,
+        });
       }
     });
   };
 
+  const retryFailedUpdates = async () => {
+    const updates = [...failedUpdates];
+    setFailedUpdates([]);
+
+    for (const update of updates) {
+      if (update.retryCount < 3) {
+        try {
+          await toggleHabit(update.habitId, update.date);
+        } catch (error) {
+          setFailedUpdates(prev => [
+            ...prev,
+            { ...update, retryCount: update.retryCount + 1 }
+          ]);
+        }
+      } else {
+        toast.error(`Failed to update habit after multiple attempts. Please try again later.`);
+      }
+    }
+  };
+
+  // Auto-retry failed updates every 30 seconds
+  useEffect(() => {
+    if (failedUpdates.length > 0) {
+      const timer = setTimeout(retryFailedUpdates, 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [failedUpdates]);
+
   return (
-    <OptimisticContext.Provider value={{ toggleHabit, isPending }}>
+    <OptimisticContext.Provider value={{ toggleHabit, isPending, retryFailedUpdates }}>
       {children}
+      {failedUpdates.length > 0 && (
+        <div className="fixed bottom-4 left-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg">
+          <p>Some updates failed to sync</p>
+          <button 
+            onClick={retryFailedUpdates}
+            className="underline text-sm mt-1"
+          >
+            Retry now
+          </button>
+        </div>
+      )}
     </OptimisticContext.Provider>
   );
 }
