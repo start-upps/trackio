@@ -5,6 +5,7 @@ import { createContext, useContext, useOptimistic, useTransition, useState, useE
 import type { Habit, HabitEntry, ToggleHabitResponse } from "@/types/habit";
 import { toast } from "sonner";
 import { format, isToday } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface OptimisticContextType {
   toggleHabit: (habitId: string, date: string) => Promise<void>;
@@ -29,11 +30,11 @@ export function OptimisticProvider({
 }) {
   const [isPending, startTransition] = useTransition();
   const [failedUpdates, setFailedUpdates] = useState<FailedUpdate[]>([]);
+  const router = useRouter();
   
   const [optimisticHabits, addOptimisticHabit] = useOptimistic(
     initialHabits,
     (state: Habit[], { habitId, date, isRemoving = false }: { habitId: string; date: string; isRemoving?: boolean }) => {
-      // Validate that we're only updating today's habit
       if (!isToday(new Date(date))) {
         toast.error("You can only update today's habits");
         return state;
@@ -73,9 +74,7 @@ export function OptimisticProvider({
   );
 
   const addFailedUpdate = (habitId: string, date: string) => {
-    // Only add failed updates for today's habits
     if (!isToday(new Date(date))) return;
-
     setFailedUpdates(prev => [
       ...prev,
       { habitId, date, retryCount: 0 }
@@ -91,21 +90,16 @@ export function OptimisticProvider({
   };
 
   const toggleHabit = async (habitId: string, date: string) => {
-    // Validate that we're only tracking today's habits
     if (!isToday(new Date(date))) {
       toast.error("You can only track today's habits");
       return;
     }
 
     const toastId = toast.loading("Updating habit...");
-    
-    const habit = initialHabits.find(h => h.id === habitId);
-    const isCompleted = habit?.entries.some(
-      entry => isToday(new Date(entry.date)) && entry.completed
-    );
 
     startTransition(async () => {
       try {
+        // Apply optimistic update
         addOptimisticHabit({ habitId, date });
 
         const response = await fetch(`/api/habits/${habitId}/entries`, {
@@ -130,6 +124,8 @@ export function OptimisticProvider({
               : "Habit completion removed",
             { id: toastId }
           );
+          // Force refresh the page data
+          router.refresh();
         } else {
           throw new Error(result.error || "Failed to update habit");
         }
@@ -140,12 +136,13 @@ export function OptimisticProvider({
           id: toastId,
           duration: 3000,
         });
+        // Refresh on error to ensure UI is in sync
+        router.refresh();
       }
     });
   };
 
   const retryFailedUpdates = async () => {
-    // Filter out any failed updates that aren't for today
     const updates = failedUpdates.filter(update => isToday(new Date(update.date)));
     setFailedUpdates(updates);
 
@@ -161,13 +158,11 @@ export function OptimisticProvider({
         }
       } else {
         toast.error(`Failed to update habit after multiple attempts. Please try again later.`);
-        // Remove failed update after max retries
         removeFailedUpdate(update.habitId, update.date);
       }
     }
   };
 
-  // Auto-retry failed updates every 30 seconds
   useEffect(() => {
     if (failedUpdates.length > 0) {
       const timer = setTimeout(retryFailedUpdates, 30000);
