@@ -2,29 +2,20 @@
 "use client";
 
 import { useState } from "react";
-import { format, isToday, isAfter } from "date-fns";
+import { format, isToday } from "date-fns";
 import { Button } from "./ui/button";
 import { type Habit } from "@/types/habit";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  ChevronDown,
-  ChevronUp,
-  Calendar,
-  BarChart2,
-  Grid,
-  Settings2,
   Pencil,
   Archive,
   Trash2,
   MoreVertical,
   Check,
 } from "lucide-react";
-import { HabitStats } from "./HabitStats";
-import { HabitCharts } from "./HabitCharts";
-import { HeatmapView } from "./HeatmapView";
-import { toast } from "sonner";
+import { EditHabitDialog } from "./EditHabitDialog";
 import {
   Tooltip,
   TooltipContent,
@@ -38,7 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { EditHabitDialog } from "./EditHabitDialog";
 
 interface HabitCardProps {
   habit: Habit;
@@ -54,7 +44,6 @@ export function HabitCard({
   onArchive,
 }: HabitCardProps) {
   const { toggleHabit, isPending } = useOptimisticHabits();
-  const [showStats, setShowStats] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   // Generate grid data for the 8x7 layout
@@ -147,7 +136,7 @@ export function HabitCard({
                   style={{
                     backgroundColor: gridData[gridData.length - 1].isCompleted 
                       ? habit.color 
-                      : 'transparent'
+                      : "transparent"
                   }}
                 >
                   <Check 
@@ -158,7 +147,7 @@ export function HabitCard({
                   />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Mark today's habit</TooltipContent>
+              <TooltipContent>Mark today&apos;s habit</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
