@@ -54,12 +54,6 @@ const viewIcons = {
   heatmap: { icon: <Grid className="h-4 w-4" />, label: "Activity" },
 };
 
-const slideUpAndFade = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
 export function HabitCard({
   habit,
   onUpdate,
@@ -71,7 +65,6 @@ export function HabitCard({
   const [view, setView] = useState<ViewType>("stats");
   const [isEditing, setIsEditing] = useState(false);
 
-  // Check if habit is completed today
   const isTodayCompleted = habit.entries.some(
     entry => isToday(new Date(entry.date)) && entry.completed
   );
@@ -85,7 +78,7 @@ export function HabitCard({
       const prevDate = new Date(arr[index - 1].date);
       const currentDate = new Date(entry.date);
       const diffDays = Math.floor(
-        (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24),
+        (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
       );
       return diffDays === 1 ? streak + 1 : streak;
     }, 0);
@@ -126,21 +119,26 @@ export function HabitCard({
   return (
     <motion.div
       layout
-      {...slideUpAndFade}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       className={cn(
-        "bg-gray-800 rounded-lg p-4 transition-all border border-gray-700/50",
-        isPending && "opacity-75",
+        "bg-gray-900 rounded-xl p-6 shadow-lg",
+        "border border-gray-800/50 hover:border-gray-700/50",
+        "transition-all duration-200",
+        isPending && "opacity-75"
       )}
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-4">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <motion.div
-                  whileHover={{ scale: 1.1 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl cursor-pointer"
                   style={{ backgroundColor: habit.color }}
                   onClick={handleToggleToday}
                 >
@@ -159,14 +157,16 @@ export function HabitCard({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
           <div>
-            <h3 className="font-medium text-white">{habit.name}</h3>
+            <h3 className="text-lg font-semibold text-white">{habit.name}</h3>
             <p className="text-sm text-gray-400">{habit.description}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center space-x-2">
           {showStats && (
-            <div className="flex gap-1 bg-gray-700 rounded-lg p-1">
+            <div className="flex gap-1 bg-gray-800 rounded-xl p-1.5">
               {(Object.keys(viewIcons) as ViewType[]).map((viewType) => (
                 <TooltipProvider key={viewType}>
                   <Tooltip>
@@ -175,8 +175,8 @@ export function HabitCard({
                         variant="ghost"
                         size="icon"
                         className={cn(
-                          "h-8 w-8",
-                          view === viewType && "bg-gray-600",
+                          "h-8 w-8 rounded-lg",
+                          view === viewType && "bg-gray-700"
                         )}
                         onClick={() => setView(viewType)}
                       >
@@ -189,13 +189,14 @@ export function HabitCard({
               ))}
             </div>
           )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                 <Settings2 className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setIsEditing(true)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
@@ -211,38 +212,47 @@ export function HabitCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-lg"
             onClick={() => setShowStats(!showStats)}
-            className="p-2 rounded-lg hover:bg-gray-700"
           >
-            {showStats ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </motion.button>
+            <motion.div
+              animate={{ rotate: showStats ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </motion.div>
+          </Button>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                <Button
+                  onClick={handleToggleToday}
+                  variant="ghost"
+                  size="icon"
+                  disabled={isPending}
+                  className={cn(
+                    "rounded-lg h-10 w-10",
+                    isTodayCompleted && "text-green-400"
+                  )}
                 >
-                  <Button
-                    onClick={handleToggleToday}
-                    variant="ghost"
-                    size="icon"
-                    disabled={isPending}
-                    className={cn(isTodayCompleted && "text-green-500")}
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      scale: isTodayCompleted ? 1.1 : 1,
+                    }}
+                    transition={{ type: "spring", stiffness: 200, damping: 10 }}
                   >
                     {isTodayCompleted ? "✓" : "○"}
-                  </Button>
-                </motion.div>
+                  </motion.div>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {isTodayCompleted 
+                {isTodayCompleted
                   ? "Completed for today!"
                   : "Mark today's habit as complete"}
               </TooltipContent>
@@ -251,7 +261,8 @@ export function HabitCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* Completion Grid */}
+      <div className="grid grid-cols-7 gap-1.5 mb-4">
         <AnimatePresence>
           {Array.from({ length: 28 }).map((_, i) => {
             const date = new Date();
@@ -260,7 +271,7 @@ export function HabitCard({
             const entry = habit.entries.find(
               (entry) =>
                 format(new Date(entry.date), "yyyy-MM-dd") ===
-                format(date, "yyyy-MM-dd"),
+                format(date, "yyyy-MM-dd")
             );
             const isCurrentDay = isToday(date);
 
@@ -268,15 +279,18 @@ export function HabitCard({
               <TooltipProvider key={dateStr}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div
+                    <motion.div
+                      whileHover={{ scale: 1.2 }}
+                      onClick={() => toggleHabit(habit.id, dateStr)}
                       className={cn(
-                        "aspect-square rounded-sm transition-all relative",
+                        "aspect-square rounded-md cursor-pointer",
+                        "transition-all duration-200",
                         isCurrentDay &&
-                          "ring-2 ring-white ring-offset-2 ring-offset-gray-800",
+                          "ring-2 ring-white ring-offset-2 ring-offset-gray-900"
                       )}
                       style={{
                         backgroundColor: habit.color,
-                        opacity: entry?.completed ? 1 : 0.2,
+                        opacity: entry?.completed ? 1 : 0.15,
                       }}
                     />
                   </TooltipTrigger>
@@ -286,7 +300,7 @@ export function HabitCard({
                       <p
                         className={cn(
                           "mt-1",
-                          entry?.completed ? "text-green-400" : "text-gray-400",
+                          entry?.completed ? "text-green-400" : "text-gray-400"
                         )}
                       >
                         {entry?.completed ? "Completed" : "Not completed"}
@@ -300,6 +314,7 @@ export function HabitCard({
         </AnimatePresence>
       </div>
 
+      {/* Stats Section */}
       <AnimatePresence mode="wait">
         {showStats && (
           <motion.div
@@ -308,6 +323,7 @@ export function HabitCard({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
+            className="pt-4 border-t border-gray-800"
           >
             {view === "stats" ? (
               <HabitStats habit={habit} />

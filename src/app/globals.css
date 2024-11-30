@@ -4,81 +4,198 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+
   body {
-    @apply bg-black text-white;
+    @apply bg-black text-white antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Better focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-purple-500/50 ring-offset-2 ring-offset-black;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full hover:bg-gray-600 transition-colors;
   }
 }
 
 @layer utilities {
+  /* Grid utilities */
   .grid-cols-53 {
     grid-template-columns: repeat(53, minmax(0, 1fr));
+  }
+
+  /* Glass effect utilities */
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-black/50 backdrop-blur-md border border-white/10;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600;
+  }
+
+  /* Advanced hover effects */
+  .hover-lift {
+    @apply transition-transform hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .hover-glow {
+    @apply transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.5)];
   }
 }
 
 @layer components {
+  /* Enhanced heatmap */
   .heatmap-grid {
     display: grid;
     gap: 0.25rem;
+    @apply relative;
   }
   
   .heatmap-square {
     width: 0.75rem;
     height: 0.75rem;
-    border-radius: 0.125rem;
-    transition: all 150ms ease;
+    @apply rounded-md transition-all duration-200;
   }
 
   .heatmap-square:hover {
     transform: scale(1.2);
+    @apply shadow-lg shadow-purple-500/20;
   }
 
   .heatmap-month-labels {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
+    @apply gap-1 mb-2 text-sm text-gray-400;
   }
 
   .heatmap-day-labels {
     display: grid;
     grid-template-rows: repeat(7, 1fr);
-    gap: 0.25rem;
-    margin-right: 0.5rem;
+    @apply gap-1 mr-2 text-sm text-gray-400;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-gray-900/50 rounded-xl border border-gray-800/50 
+           hover:border-gray-700/50 transition-all duration-200
+           backdrop-blur-sm shadow-xl;
+  }
+
+  .card-hover {
+    @apply hover:shadow-2xl hover:shadow-purple-500/10
+           hover:-translate-y-1 transition-all duration-300;
+  }
+
+  /* Button styles */
+  .button-glow {
+    @apply relative overflow-hidden;
+  }
+
+  .button-glow::after {
+    content: '';
+    @apply absolute inset-0 rounded-xl opacity-0 
+           bg-gradient-to-r from-purple-500/20 to-pink-500/20
+           transition-opacity duration-300;
+  }
+
+  .button-glow:hover::after {
+    @apply opacity-100;
   }
 }
 
-/* Smooth transitions */
-.transition-transform {
-  transition-property: transform;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+/* Animation keyframes */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* Animation utilities */
-.animate-fade-in {
-  animation: fadeIn 200ms ease-out;
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
-.animate-scale-in {
-  animation: scaleIn 200ms ease-out;
+.animate-pulse-subtle {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.animate-shimmer {
+  @apply relative overflow-hidden;
 }
 
-@keyframes scaleIn {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+.animate-shimmer::after {
+  content: '';
+  @apply absolute inset-0 -translate-x-full
+         bg-gradient-to-r from-transparent via-white/10 to-transparent;
+  animation: shimmer 2s infinite;
+}
+
+/* Enhanced transitions */
+.transition-all {
+  @apply transition-[all] duration-300 ease-out;
+}
+
+.transition-colors {
+  @apply transition-[background-color,border-color,color,fill,stroke] duration-200;
+}
+
+.transition-transform {
+  @apply transition-transform duration-200;
+}
+
+/* Blur effects */
+.blur-backdrop {
+  @apply backdrop-blur-md bg-black/50;
+}
+
+.blur-card {
+  @apply backdrop-blur-sm bg-white/5;
 }
