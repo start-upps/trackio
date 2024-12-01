@@ -1,6 +1,6 @@
 // src/components/GitHubStyleHabitCard.tsx
 import React, { useState } from "react";
-import { format, eachDayOfInterval, startOfYear, endOfYear, getMonth, subYears, startOfDay, isSameDay } from "date-fns";
+import { format, eachDayOfInterval, startOfYear, endOfYear, subYears, isSameDay } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
