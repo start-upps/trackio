@@ -4,7 +4,7 @@
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { type CreateHabitEntry } from "@/types/habit"
+// import { type CreateHabitEntry } from "@/types/habit"
 import { z } from "zod"
 
 // Validation schemas

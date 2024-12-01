@@ -4,8 +4,6 @@
 import { motion } from "framer-motion";
 import { 
   Flame, 
-  CheckCircle, 
-  Percent, 
   Trophy,
   Calendar,
   TrendingUp 

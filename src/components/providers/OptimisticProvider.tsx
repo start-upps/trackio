@@ -1,10 +1,10 @@
 // src/components/providers/OptimisticProvider.tsx
 "use client";
 
-import { createContext, useContext, useOptimistic, useTransition, useState, useEffect } from "react";
+import { createContext, useContext, useOptimistic, useTransition, useState, useEffect, useCallback } from "react";
 import type { Habit, HabitEntry, ToggleHabitResponse } from "@/types/habit";
 import { toast } from "sonner";
-import { format, isToday, isBefore, startOfDay } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import { useRouter } from "next/navigation";
 
 interface OptimisticContextType {
@@ -32,13 +32,12 @@ export function OptimisticProvider({
   const [failedUpdates, setFailedUpdates] = useState<FailedUpdate[]>([]);
   const router = useRouter();
   
-  const [optimisticHabits, addOptimisticHabit] = useOptimistic(
+  const [, addOptimisticHabit] = useOptimistic(
     initialHabits,
-    (state: Habit[], { habitId, date, isRemoving = false }: { habitId: string; date: string; isRemoving?: boolean }) => {
+    (state: Habit[], { habitId, date }: { habitId: string; date: string }) => {
       const targetDate = new Date(date);
       const now = new Date();
       
-      // Only allow toggling for today or past dates
       if (isBefore(startOfDay(now), startOfDay(targetDate))) {
         toast.error("Cannot mark habits for future dates");
         return state;
@@ -79,20 +78,20 @@ export function OptimisticProvider({
     },
   );
 
-  const addFailedUpdate = (habitId: string, date: string) => {
+  const addFailedUpdate = useCallback((habitId: string, date: string) => {
     setFailedUpdates(prev => [
       ...prev,
       { habitId, date, retryCount: 0 }
     ]);
-  };
+  }, []);
 
-  const removeFailedUpdate = (habitId: string, date: string) => {
+  const removeFailedUpdate = useCallback((habitId: string, date: string) => {
     setFailedUpdates(prev => 
       prev.filter(update => 
         !(update.habitId === habitId && update.date === date)
       )
     );
-  };
+  }, []);
 
   const toggleHabit = async (habitId: string, date: string) => {
     const targetDate = new Date(date);
@@ -107,7 +106,6 @@ export function OptimisticProvider({
 
     startTransition(async () => {
       try {
-        // Apply optimistic update
         addOptimisticHabit({ habitId, date });
 
         const response = await fetch(`/api/habits/${habitId}/entries`, {
@@ -150,8 +148,7 @@ export function OptimisticProvider({
     });
   };
 
-  const retryFailedUpdates = async () => {
-    // Only retry failed updates for dates not in the future
+  const retryFailedUpdates = useCallback(async () => {
     const now = new Date();
     const updates = failedUpdates.filter(update => 
       !isBefore(startOfDay(now), startOfDay(new Date(update.date)))
@@ -174,14 +171,14 @@ export function OptimisticProvider({
         removeFailedUpdate(update.habitId, update.date);
       }
     }
-  };
+  }, [failedUpdates, removeFailedUpdate]);
 
   useEffect(() => {
     if (failedUpdates.length > 0) {
       const timer = setTimeout(retryFailedUpdates, 30000);
       return () => clearTimeout(timer);
     }
-  }, [failedUpdates]);
+  }, [failedUpdates, retryFailedUpdates]);
 
   return (
     <OptimisticContext.Provider value={{ toggleHabit, isPending, retryFailedUpdates }}>

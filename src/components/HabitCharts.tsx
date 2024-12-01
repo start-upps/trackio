@@ -17,7 +17,7 @@ import {
 import { 
   format, 
   startOfMonth, 
-  endOfMonth, 
+  // endOfMonth, 
   eachDayOfInterval, 
   subMonths,
   getDaysInMonth,
@@ -57,7 +57,7 @@ function prepareCompletionRateData(habit: Habit) {
   let currentDate = startDate;
   while (currentDate <= endDate) {
     const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
+    // const monthEnd = endOfMonth(currentDate);
     const monthStr = format(monthStart, "MMM yyyy");
 
     const monthEntries = habit.entries.filter((entry) => {

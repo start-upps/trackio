@@ -5,9 +5,9 @@ import {
   subDays, 
   startOfMonth,
   endOfMonth,
-  eachDayOfInterval,
+  // eachDayOfInterval,
   isSameMonth,
-  isToday,
+  // isToday,
   format,
   getDaysInMonth
 } from "date-fns";
@@ -72,8 +72,8 @@ export function calculateHabitStats(habit: Habit): HabitStats {
   const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
 
   for (let month = sixMonthsAgo; month <= today; month = new Date(month.getFullYear(), month.getMonth() + 1, 1)) {
-    const monthStart = startOfMonth(month);
-    const monthEnd = endOfMonth(month);
+    // const monthStart = startOfMonth(month);
+    // const monthEnd = endOfMonth(month);
     const daysInMonth = getDaysInMonth(month);
     const isCurrentMonth = isSameMonth(month, today);
 

@@ -1,6 +1,6 @@
 // src/components/MonthlyHabitTracker.tsx
 import { useState, useMemo } from 'react';
-import { format, getDaysInMonth, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip";
-import type { Habit, MonthlyViewProps } from "@/types/habit";
+import type { MonthlyViewProps } from "@/types/habit";
 
 export default function MonthlyHabitTracker({ 
   habits, 
