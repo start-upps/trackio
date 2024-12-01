@@ -1,39 +1,19 @@
 // src/app/page.tsx
-"use client";
-import { redirect } from "next/navigation"
-import { verifyAuth } from "@/lib/auth"
-import { db } from "@/lib/db"
-import type { Habit, FetchHabitResponse } from "@/types/habit"
-import NewHabitButton from "@/components/NewHabitButton"
-import { SignOutButton } from "@/components/SignOutButton"
-import { calculateHabitStats } from "@/lib/stats"
-import { Suspense } from "react"
-import Loading from "./loading"
-import { startOfMonth, subMonths } from "date-fns"
-import MonthlyView from "@/components/MonthlyHabitTracker"
-import { OptimisticProvider } from "@/components/providers/OptimisticProvider"
+import { redirect } from "next/navigation";
+import { verifyAuth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import type { Metadata } from "next";
+import { startOfMonth, subMonths } from "date-fns";
+import { calculateHabitStats } from "@/lib/stats";
+import ClientPage from "@/components/ClientPage";
+import type { Habit, FetchHabitResponse } from "@/types/habit";
 
-function MonthlyViewWithOptimistic({ habits }: { habits: Habit[] }) {
-  return (
-    <OptimisticProvider habits={habits}>
-      <MonthlyView 
-        habits={habits}
-        onToggleHabit={async (habitId, date) => {
-          try {
-            const response = await fetch(`/api/habits/${habitId}/entries`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ date }),
-            });
-            if (!response.ok) throw new Error("Failed to toggle habit");
-          } catch (error) {
-            console.error("Error toggling habit:", error);
-          }
-        }}
-      />
-    </OptimisticProvider>
-  );
-}
+export const metadata: Metadata = {
+  title: "Habit Tracker - Dashboard",
+  description: "Track your daily habits",
+};
+
+export const revalidate = 60;
 
 async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]> {
   try {
@@ -92,18 +72,7 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
   }
 }
 
-function ErrorDisplay({ error }: { error: Error }) {
-  return (
-    <div className="text-center py-12">
-      <h1 className="text-2xl font-bold text-red-500">Error</h1>
-      <p className="text-gray-400 mt-2">{error.message}</p>
-      <p className="text-gray-400 mt-1">Please try again later.</p>
-      <SignOutButton className="mt-4" />
-    </div>
-  );
-}
-
-export default async function Home() {
+export default async function Page() {
   const userId = await verifyAuth();
   
   if (!userId) {
@@ -117,71 +86,17 @@ export default async function Home() {
     habitsData = await getHabitsWithStats(userId);
   } catch (e) {
     error = e instanceof Error ? e : new Error('An unexpected error occurred');
-    console.error('Error in Home page:', e);
+    console.error('Error in Page:', e);
   }
 
   const activeHabits = habitsData.filter(data => !data.habit.archived);
   const archivedHabits = habitsData.filter(data => data.habit.archived);
 
   return (
-    <main className="container mx-auto max-w-[1200px] p-4">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Habit Tracker</h1>
-          <p className="text-gray-400">Track your daily habits</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <NewHabitButton />
-          <SignOutButton />
-        </div>
-      </div>
-
-      <Suspense fallback={<Loading />}>
-        {error ? (
-          <ErrorDisplay error={error} />
-        ) : (
-          <div className="space-y-8">
-            {/* Active Habits */}
-            <section>
-              {activeHabits.length === 0 ? (
-                <div className="text-center py-12">
-                  <h3 className="text-lg font-medium text-gray-400 mb-4">
-                    No habits tracked yet
-                  </h3>
-                  <p className="text-gray-500">
-                    Create your first habit to start tracking your progress
-                  </p>
-                </div>
-              ) : (
-                <MonthlyViewWithOptimistic 
-                  habits={activeHabits.map(data => data.habit)} 
-                />
-              )}
-            </section>
-
-            {/* Archived Habits */}
-            {archivedHabits.length > 0 && (
-              <section className="pt-8 border-t border-gray-800">
-                <h2 className="text-xl font-bold text-gray-400 mb-4">
-                  Archived Habits
-                </h2>
-                <MonthlyViewWithOptimistic 
-                  habits={archivedHabits.map(data => data.habit)}
-                />
-              </section>
-            )}
-          </div>
-        )}
-      </Suspense>
-    </main>
+    <ClientPage 
+      activeHabits={activeHabits.map(data => data.habit)}
+      archivedHabits={archivedHabits.map(data => data.habit)}
+      error={error}
+    />
   );
 }
-
-// Optimize page revalidation
-export const revalidate = 60;
-
-// Generate metadata
-export const metadata = {
-  title: 'Habit Tracker - Dashboard',
-  description: 'Track and manage your daily habits',
-};
