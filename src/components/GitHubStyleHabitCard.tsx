@@ -1,156 +1,76 @@
 // src/components/GitHubStyleHabitCard.tsx
-import React, { useState } from "react";
-import { format, eachDayOfInterval, startOfYear, endOfYear, subYears, isSameDay } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Habit } from "@/types/habit";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GitHubStyleHabitCardProps {
   habit: Habit;
   onToggle?: (date: string) => void;
 }
 
-const DAYS = ["", "Mon", "", "Wed", "", "Fri", ""];
-const INTENSITIES = [0, 1, 2, 3, 4];
-
 export default function GitHubStyleHabitCard({ habit, onToggle }: GitHubStyleHabitCardProps) {
-  const [yearOffset, setYearOffset] = useState(0);
-  const currentYear = subYears(new Date(), yearOffset);
-  const startDate = startOfYear(currentYear);
-  const endDate = endOfYear(currentYear);
-  
-  // Generate all dates for the year
-  const allDates = eachDayOfInterval({ start: startDate, end: endDate });
-  
-  // Group dates by week
-  const weeks = allDates.reduce((acc, date) => {
-    const weekIndex = Math.floor((date.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-    if (!acc[weekIndex]) {
-      acc[weekIndex] = Array(7).fill(null);
-    }
-    acc[weekIndex][date.getDay()] = date;
-    return acc;
-  }, {} as Record<number, (Date | null)[]>);
+  // Generate grid data for the full year view
+  const gridData = Array.from({ length: 371 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (370 - i));
+    const dateStr = format(date, "yyyy-MM-dd");
+    return {
+      date,
+      dateStr,
+      isCompleted: habit.entries.some(
+        entry => format(new Date(entry.date), "yyyy-MM-dd") === dateStr && entry.completed
+      ),
+      isToday: isToday(date)
+    };
+  });
 
-  // Get contribution intensity for a date (0-4)
-  const getIntensity = (date: Date) => {
-    if (!date) return 0;
-    const entry = habit.entries.find(e => 
-      isSameDay(new Date(e.date), date)
-    );
-    if (!entry?.completed) return 0;
-    
-    const dayCompletions = habit.entries.filter(e => 
-      isSameDay(new Date(e.date), date) && e.completed
-    ).length;
-    
-    if (dayCompletions >= 4) return 4;
-    return dayCompletions;
-  };
+  // Get unique months for labels
+  const months = Array.from(new Set(gridData.map(d => format(d.date, "MMM"))));
 
   return (
-    <div className="pt-4">
-      {/* Year Navigation */}
-      <div className="flex items-center justify-end gap-2 mb-6 text-sm text-gray-400">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setYearOffset(prev => prev + 1)}
-          className="h-6 w-6"
-        >
-          <ChevronLeft className="h-3 w-3" />
-        </Button>
-        {format(currentYear, 'yyyy')}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setYearOffset(prev => Math.max(0, prev - 1))}
-          disabled={yearOffset === 0}
-          className="h-6 w-6"
-        >
-          <ChevronRight className="h-3 w-3" />
-        </Button>
+    <div className="space-y-4">
+      {/* Month labels */}
+      <div className="grid grid-cols-53 gap-[1px] text-xs text-gray-500 pl-12">
+        {months.map(month => (
+          <div key={month} className="col-span-4">{month}</div>
+        ))}
       </div>
 
-      <div className="flex flex-col">
-        {/* Months */}
-        <div className="flex ml-[22px] text-xs text-gray-500">
-          {Array.from({ length: 12 }).map((_, month) => (
-            <div 
-              key={month}
-              style={{ 
-                width: '33px',
-                marginRight: month === 11 ? '0' : '4px'
-              }}
-            >
-              {format(new Date(currentYear.getFullYear(), month), 'MMM')}
-            </div>
-          ))}
+      {/* Main grid with day labels */}
+      <div className="flex">
+        <div className="flex flex-col gap-[1px] pr-2 text-xs text-gray-500">
+          <span>Mon</span>
+          <span>Wed</span>
+          <span>Fri</span>
         </div>
 
-        {/* Grid */}
-        <div className="mt-2 relative flex">
-          {/* Day labels */}
-          <div className="flex flex-col gap-[2px] mr-2 text-xs text-gray-500">
-            {DAYS.map((day, i) => (
-              <div key={i} className="h-[10px] leading-[10px]">{day}</div>
-            ))}
-          </div>
-
-          {/* Contribution squares */}
-          <div className="flex gap-[2px]">
-            {Object.values(weeks).map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-[2px]">
-                {week.map((date, dayIndex) => {
-                  if (!date) return <div key={dayIndex} className="w-[10px] h-[10px]" />;
-                  
-                  const intensity = getIntensity(date);
-                  
-                  return (
-                    <TooltipProvider key={dayIndex}>
-                      <Tooltip delayDuration={50}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => onToggle?.(date.toISOString())}
-                            className={cn(
-                              "w-[10px] h-[10px] rounded-sm",
-                              "transition-all duration-200",
-                              "hover:ring-2 hover:ring-gray-400"
-                            )}
-                            style={{
-                              backgroundColor: habit.color,
-                              opacity: 0.1 + (intensity * 0.2)
-                            }}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          {intensity ? `${intensity} contribution${intensity > 1 ? 's' : ''}` : 'No contributions'} on {format(date, 'MMMM d, yyyy')}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-2 mt-4 text-xs text-gray-500">
-          <span>Less</span>
-          {INTENSITIES.map(level => (
-            <div
-              key={level}
-              className="w-[10px] h-[10px] rounded-sm"
-              style={{
-                backgroundColor: habit.color,
-                opacity: 0.1 + (level * 0.2)
-              }}
-            />
+        <div className="grid grid-cols-53 gap-[1px]">
+          {gridData.map(day => (
+            <TooltipProvider key={day.dateStr}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    onClick={() => onToggle?.(day.date.toISOString())}
+                    className={cn(
+                      "w-4 h-4 rounded-[1px] cursor-pointer transition-all",
+                      "hover:ring-1 hover:ring-white/50"
+                    )}
+                    style={{
+                      backgroundColor: habit.color,
+                      opacity: day.isCompleted ? 1 : 0.1
+                    }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  <p>{format(day.date, "MMMM d, yyyy")}</p>
+                  <p className={day.isCompleted ? "text-green-400" : "text-gray-400"}>
+                    {day.isCompleted ? "Completed" : "Not completed"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ))}
-          <span>More</span>
         </div>
       </div>
     </div>
