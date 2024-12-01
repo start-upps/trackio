@@ -30,14 +30,17 @@ export interface HabitCardProps {
   onArchive?: (id: string) => Promise<void>;
 }
 
-export interface MonthlyViewProps {
+export interface HabitGridViewProps {
   habits: Habit[];
-  onToggleHabit: (habitId: string, date: string) => Promise<void>;
-  className?: string;
+}
+
+export interface HabitListProps {
+  habits: Habit[];
+  initialStats?: Record<string, HabitStats>;
 }
 
 // View types
-export type ViewMode = "weekly" | "monthly";
+export type ViewMode = "list" | "grid" | "weekly" | "monthly";
 
 export interface DayData {
   date: Date;
@@ -47,47 +50,6 @@ export interface DayData {
   isFuture?: boolean;
 }
 
-// Monthly types
-export interface MonthlyStats {
-  month: string;
-  completions: number;
-  possibleDays: number;
-  completionRate: number;
-  longestStreak: number;
-  totalDays: number;
-}
-
-export interface MonthData {
-  date: Date;
-  entries: HabitEntry[];
-  stats: MonthlyStats;
-}
-
-// API request types
-export type CreateHabitRequest = {
-  name: string;
-  description: string;
-  color?: string;
-  icon?: string;
-};
-
-export type UpdateHabitRequest = {
-  name?: string;
-  description?: string;
-  color?: string;
-  icon?: string;
-  archived?: boolean;
-};
-
-export type CreateHabitEntry = {
-  date: string;
-  habitId: string;
-};
-
-export type UpdateHabitEntry = {
-  completed: boolean;
-};
-
 // Statistics types
 export interface HabitStats {
   currentStreak: number;
@@ -95,8 +57,6 @@ export interface HabitStats {
   completionRate: number;
   totalCompletions: number;
   daysTracked: number;
-  monthlyStats: MonthlyStats[];
-  bestMonth: MonthlyStats | null;
 }
 
 // Chart data types
@@ -105,14 +65,6 @@ export interface ChartDataPoint {
   completed: number;
   month: string;
   isToday: boolean;
-}
-
-export interface MonthlyPerformanceData {
-  month: string;
-  completionRate: number;
-  streak: number;
-  totalDays: number;
-  completedDays: number;
 }
 
 // API response types
@@ -126,7 +78,6 @@ export interface ToggleHabitResponse {
 export interface FetchHabitResponse {
   habit: Habit;
   stats: HabitStats;
-  monthlyStats: MonthlyStats[];
 }
 
 export interface CreateHabitResponse {
@@ -152,11 +103,6 @@ export interface ApiError {
   code?: string;
   details?: unknown;
 }
-
-// Utility types
-export type DateString = string; // ISO format
-export type HabitId = string;
-export type UserId = string;
 
 // State management types
 export interface HabitState {

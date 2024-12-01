@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { format, isToday } from "date-fns";
 import { Button } from "./ui/button";
-import { type Habit, type HabitCardProps, type DayData, type ViewMode } from "@/types/habit";
+import { type Habit, type HabitCardProps, type DayData } from "@/types/habit";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -33,7 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import MonthlyHabitTracker from "./MonthlyHabitTracker";
+import { HabitGridView } from "./HabitGridView";
 
 export function HabitCard({
   habit,
@@ -46,7 +46,7 @@ export function HabitCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
+  const [viewMode, setViewMode] = useState<"weekly" | "monthly">("weekly");
 
   // Generate weekly grid data (7 days)
   const weeklyData: DayData[] = Array.from({ length: 7 }, (_, i) => {
@@ -286,10 +286,7 @@ export function HabitCard({
           ))}
         </div>
       ) : (
-        <MonthlyHabitTracker
-          habits={[habit]}
-          onToggleHabit={toggleHabit}
-        />
+        <HabitGridView habits={[habit]} />
       )}
 
       {/* Edit Dialog */}

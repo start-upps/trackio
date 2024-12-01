@@ -3,13 +3,20 @@
 
 import { useState } from "react";
 import { HabitCard } from "./HabitCard";
+import { HabitGridView } from "./HabitGridView";
 import type { Habit, HabitStats } from "@/types/habit";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ListPlus } from "lucide-react";
+import { Plus, ListPlus, LayoutGrid, List } from "lucide-react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 
 interface HabitListProps {
   habits: Habit[];
@@ -34,10 +41,10 @@ const containerItem = {
 
 export function HabitList({ habits: initialHabits }: HabitListProps) {
   const [habits, setHabits] = useState(initialHabits);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const router = useRouter();
 
   const handleDelete = async (habitId: string) => {
-    // Optimistically remove the habit from the UI
     setHabits(current => current.filter(h => h.id !== habitId));
     
     try {
@@ -53,7 +60,6 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
       router.refresh();
     } catch (error) {
       console.error("Error deleting habit:", error);
-      // Revert optimistic update on error
       setHabits(initialHabits);
       toast.error("Failed to delete habit");
     }
@@ -63,7 +69,6 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
 
-    // Optimistically update the UI
     setHabits(current =>
       current.map(h =>
         h.id === habitId
@@ -87,14 +92,12 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
       router.refresh();
     } catch (error) {
       console.error("Error archiving habit:", error);
-      // Revert optimistic update on error
       setHabits(initialHabits);
       toast.error("Failed to update habit");
     }
   };
 
   const handleUpdate = async (habitId: string, data: Partial<Habit>) => {
-    // Optimistically update the UI
     setHabits(current =>
       current.map(habit =>
         habit.id === habitId
@@ -118,7 +121,6 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
       router.refresh();
     } catch (error) {
       console.error("Error updating habit:", error);
-      // Revert optimistic update on error
       setHabits(initialHabits);
       toast.error("Failed to update habit");
     }
@@ -160,32 +162,75 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
 
   return (
     <OptimisticProvider habits={habits}>
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="space-y-6"
-      >
-        <AnimatePresence mode="popLayout" initial={false}>
-          {habits.map((habit) => (
-            <motion.div
-              key={habit.id}
-              layout
-              layoutId={habit.id}
-              variants={containerItem}
-              transition={{ 
-                layout: { type: "spring", stiffness: 300, damping: 30 }
-              }}
-            >
-              <HabitCard 
-                habit={habit}
-                onDelete={handleDelete}
-                onArchive={handleArchive}
-                onUpdate={handleUpdate}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      <div className="space-y-6">
+        {/* View toggle */}
+        <div className="flex justify-end">
+          <div className="bg-gray-800 rounded-lg p-1 flex gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={viewMode === "list" ? "bg-gray-700" : ""}
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>List view</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={viewMode === "grid" ? "bg-gray-700" : ""}
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Grid view</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+
+        {viewMode === "list" ? (
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+          >
+            <AnimatePresence mode="popLayout" initial={false}>
+              {habits.map((habit) => (
+                <motion.div
+                  key={habit.id}
+                  layout
+                  layoutId={habit.id}
+                  variants={containerItem}
+                  transition={{ 
+                    layout: { type: "spring", stiffness: 300, damping: 30 }
+                  }}
+                >
+                  <HabitCard 
+                    habit={habit}
+                    onDelete={handleDelete}
+                    onArchive={handleArchive}
+                    onUpdate={handleUpdate}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        ) : (
+          <HabitGridView habits={habits} />
+        )}
 
         {habits.length > 0 && (
           <motion.div
@@ -204,7 +249,7 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
             </Button>
           </motion.div>
         )}
-      </motion.div>
+      </div>
     </OptimisticProvider>
   );
 }
