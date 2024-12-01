@@ -22,6 +22,28 @@ export type Habit = {
   entries: HabitEntry[];
 };
 
+// Monthly view types
+export interface MonthlyViewProps {
+  habits: Habit[];
+  onToggleHabit: (habitId: string, date: string) => Promise<void>;
+  className?: string;
+}
+
+export interface MonthData {
+  date: Date;
+  entries: HabitEntry[];
+  stats: MonthlyStats;
+}
+
+export interface MonthlyStats {
+  month: string;
+  completions: number;
+  possibleDays: number;
+  completionRate: number;
+  longestStreak: number;
+  totalDays: number;
+}
+
 // Component Props types
 export interface HabitCardProps {
   habit: Habit;
@@ -57,6 +79,8 @@ export interface HabitStats {
   completionRate: number;
   totalCompletions: number;
   daysTracked: number;
+  monthlyStats: MonthlyStats[];
+  bestMonth: MonthlyStats | null;
 }
 
 // Chart data types
@@ -65,6 +89,14 @@ export interface ChartDataPoint {
   completed: number;
   month: string;
   isToday: boolean;
+}
+
+export interface MonthlyPerformanceData {
+  month: string;
+  completionRate: number;
+  streak: number;
+  totalDays: number;
+  completedDays: number;
 }
 
 // API response types
@@ -78,6 +110,7 @@ export interface ToggleHabitResponse {
 export interface FetchHabitResponse {
   habit: Habit;
   stats: HabitStats;
+  monthlyStats: MonthlyStats[];
 }
 
 export interface CreateHabitResponse {

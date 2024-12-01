@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { isToday } from "date-fns"
+import { isBefore, startOfDay } from "date-fns"
 
 export async function POST(
   req: Request,
@@ -16,12 +16,14 @@ export async function POST(
     }
 
     const { date } = await req.json()
+    const targetDate = new Date(date)
+    const now = new Date()
 
-    // Validate date is today
-    if (!isToday(new Date(date))) {
-      return new NextResponse("Can only track habits for today", { 
+    // Prevent marking future dates
+    if (isBefore(startOfDay(now), startOfDay(targetDate))) {
+      return new NextResponse("Cannot mark habits for future dates", { 
         status: 400,
-        statusText: "Only today's habits can be tracked"
+        statusText: "Future dates are not allowed"
       })
     }
 
@@ -34,7 +36,7 @@ export async function POST(
       include: {
         entries: {
           where: {
-            date: new Date(date)
+            date: targetDate
           }
         }
       }
@@ -44,12 +46,12 @@ export async function POST(
       return new NextResponse("Habit not found", { status: 404 })
     }
 
-    // Find existing entry for today
+    // Find existing entry for the date
     const existingEntry = await db.habitEntry.findUnique({
       where: {
         habitId_date: {
           habitId: params.habitId,
-          date: new Date(date),
+          date: targetDate,
         },
       },
     })
@@ -69,7 +71,7 @@ export async function POST(
       entry = await db.habitEntry.create({
         data: {
           habitId: params.habitId,
-          date: new Date(date),
+          date: targetDate,
           completed: true,
         },
       })
@@ -85,7 +87,6 @@ export async function POST(
   } catch (error) {
     console.error('Error toggling habit entry:', error)
     
-    // Provide more specific error messages
     if (error instanceof Error) {
       return new NextResponse(error.message, { 
         status: 500,
@@ -100,14 +101,14 @@ export async function POST(
   }
 }
 
-// Add a type to ensure proper response shape
-interface ToggleHabitResponse {
+// Response type
+export interface ToggleHabitResponse {
   success: boolean;
   entry: HabitEntry | null;
   message: string;
 }
 
-interface HabitEntry {
+export interface HabitEntry {
   id: string;
   date: Date;
   completed: boolean;

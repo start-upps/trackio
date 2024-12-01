@@ -3,13 +3,15 @@ import { Habit } from "@/types/habit";
 import { 
   isSameDay, 
   subDays, 
-  // startOfMonth,
-  // endOfMonth,
-  // eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
   isSameMonth,
-  // isToday,
   format,
-  getDaysInMonth
+  getDaysInMonth,
+  eachDayOfInterval,
+  isToday,
+  isBefore,
+  startOfDay  // Add this import
 } from "date-fns";
 
 export interface HabitStats {
@@ -29,6 +31,14 @@ export interface MonthlyStats {
   completionRate: number;
   longestStreak: number;
   totalDays: number;
+  dayStats: DayStats[];
+}
+
+export interface DayStats {
+  date: string;
+  completed: boolean;
+  isToday: boolean;
+  isFuture: boolean;
 }
 
 export function calculateHabitStats(habit: Habit): HabitStats {
@@ -72,8 +82,8 @@ export function calculateHabitStats(habit: Habit): HabitStats {
   const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
 
   for (let month = sixMonthsAgo; month <= today; month = new Date(month.getFullYear(), month.getMonth() + 1, 1)) {
-    // const monthStart = startOfMonth(month);
-    // const monthEnd = endOfMonth(month);
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
     const daysInMonth = getDaysInMonth(month);
     const isCurrentMonth = isSameMonth(month, today);
 
@@ -86,6 +96,17 @@ export function calculateHabitStats(habit: Habit): HabitStats {
     );
 
     const completions = monthEntries.filter(e => e.completed).length;
+
+    // Calculate daily stats for the month
+    const dayStats: DayStats[] = eachDayOfInterval({ start: monthStart, end: monthEnd })
+      .map(date => ({
+        date: format(date, 'yyyy-MM-dd'),
+        completed: monthEntries.some(entry => 
+          isSameDay(entry.date, date) && entry.completed
+        ),
+        isToday: isToday(date),
+        isFuture: isBefore(startOfDay(today), startOfDay(date))
+      }));
 
     // Calculate monthly streak
     let monthLongestStreak = 0;
@@ -111,7 +132,8 @@ export function calculateHabitStats(habit: Habit): HabitStats {
       possibleDays,
       completionRate: Math.round((completions / possibleDays) * 100),
       longestStreak: monthLongestStreak,
-      totalDays: daysInMonth
+      totalDays: daysInMonth,
+      dayStats
     });
   }
 
@@ -151,11 +173,25 @@ export function calculateMonthStats(
     }))
     .filter(entry => isSameMonth(entry.date, month));
 
+  const monthStart = startOfMonth(month);
+  const monthEnd = endOfMonth(month);
   const daysInMonth = getDaysInMonth(month);
-  const isCurrentMonth = isSameMonth(month, new Date());
-  const possibleDays = isCurrentMonth ? new Date().getDate() : daysInMonth;
+  const today = new Date();
+  const isCurrentMonth = isSameMonth(month, today);
+  const possibleDays = isCurrentMonth ? today.getDate() : daysInMonth;
   
   const completions = entries.filter(e => e.completed).length;
+
+  // Calculate daily stats
+  const dayStats: DayStats[] = eachDayOfInterval({ start: monthStart, end: monthEnd })
+    .map(date => ({
+      date: format(date, 'yyyy-MM-dd'),
+      completed: entries.some(entry => 
+        isSameDay(entry.date, date) && entry.completed
+      ),
+      isToday: isToday(date),
+      isFuture: isBefore(startOfDay(today), startOfDay(date))
+    }));
 
   // Calculate monthly streak
   let longestStreak = 0;
@@ -181,6 +217,7 @@ export function calculateMonthStats(
     possibleDays,
     completionRate: Math.round((completions / possibleDays) * 100),
     longestStreak,
-    totalDays: daysInMonth
+    totalDays: daysInMonth,
+    dayStats
   };
 }
