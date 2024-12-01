@@ -93,7 +93,7 @@ export function OptimisticProvider({
     );
   }, []);
 
-  const toggleHabit = async (habitId: string, date: string) => {
+  const toggleHabit = useCallback(async (habitId: string, date: string) => {
     const targetDate = new Date(date);
     const now = new Date();
 
@@ -146,7 +146,7 @@ export function OptimisticProvider({
         router.refresh();
       }
     });
-  };
+  }, [addOptimisticHabit, router, removeFailedUpdate, addFailedUpdate]);
 
   const retryFailedUpdates = useCallback(async () => {
     const now = new Date();
@@ -171,7 +171,7 @@ export function OptimisticProvider({
         removeFailedUpdate(update.habitId, update.date);
       }
     }
-  }, [failedUpdates, removeFailedUpdate]);
+  }, [failedUpdates, toggleHabit, removeFailedUpdate]);
 
   useEffect(() => {
     if (failedUpdates.length > 0) {
