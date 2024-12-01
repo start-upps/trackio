@@ -12,13 +12,23 @@ import {
   LineChart,
   Line,
   CartesianGrid,
+  Legend,
 } from "recharts";
-import { format, startOfWeek, eachDayOfInterval, subWeeks } from "date-fns";
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  eachDayOfInterval, 
+  subMonths,
+  getDaysInMonth,
+  isSameMonth,
+  isToday
+} from "date-fns";
 import type { Habit } from "@/types/habit";
 
-function prepareWeeklyData(habit: Habit) {
+function prepareMonthlyData(habit: Habit) {
   const endDate = new Date();
-  const startDate = subWeeks(endDate, 4);
+  const startDate = subMonths(endDate, 2); // Show last 3 months
 
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
@@ -33,44 +43,59 @@ function prepareWeeklyData(habit: Habit) {
     return {
       date: format(day, "MMM dd"),
       completed: completed ? 1 : 0,
-      week: format(startOfWeek(day), "MMM dd"),
+      month: format(day, "MMM"),
+      isToday: isToday(day),
     };
   });
 }
 
 function prepareCompletionRateData(habit: Habit) {
-  const weeks = [];
+  const months = [];
   const endDate = new Date();
-  const startDate = subWeeks(endDate, 4);
+  const startDate = subMonths(endDate, 5); // Show last 6 months
 
   let currentDate = startDate;
   while (currentDate <= endDate) {
-    const weekStart = startOfWeek(currentDate);
-    const weekStr = format(weekStart, "MMM dd");
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const monthStr = format(monthStart, "MMM yyyy");
 
-    const weekEntries = habit.entries.filter((entry) => {
+    const monthEntries = habit.entries.filter((entry) => {
       const entryDate = new Date(entry.date);
-      return (
-        entryDate >= weekStart &&
-        entryDate < startOfWeek(currentDate, { weekStartsOn: 1 })
-      );
+      return isSameMonth(entryDate, currentDate);
     });
 
+    const daysInMonth = getDaysInMonth(currentDate);
     const completionRate =
-      weekEntries.length > 0
-        ? (weekEntries.filter((e) => e.completed).length / weekEntries.length) *
-          100
+      monthEntries.length > 0
+        ? (monthEntries.filter((e) => e.completed).length / daysInMonth) * 100
         : 0;
 
-    weeks.push({
-      week: weekStr,
-      rate: Math.round(completionRate),
+    const streak = monthEntries.reduce((acc, entry, index, arr) => {
+      if (!entry.completed) return acc;
+      if (index === 0) return 1;
+      
+      const prevDate = new Date(arr[index - 1].date);
+      const currentDate = new Date(entry.date);
+      const diffDays = Math.floor(
+        (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      
+      return diffDays === 1 ? acc + 1 : acc;
+    }, 0);
+
+    months.push({
+      month: monthStr,
+      completionRate: Math.round(completionRate),
+      streak,
+      totalDays: daysInMonth,
+      completedDays: monthEntries.filter(e => e.completed).length,
     });
 
-    currentDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+    currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
   }
 
-  return weeks;
+  return months;
 }
 
 interface HabitChartsProps {
@@ -78,7 +103,7 @@ interface HabitChartsProps {
 }
 
 export function HabitCharts({ habit }: HabitChartsProps) {
-  const weeklyData = prepareWeeklyData(habit);
+  const monthlyData = prepareMonthlyData(habit);
   const completionData = prepareCompletionRateData(habit);
 
   return (
@@ -89,23 +114,40 @@ export function HabitCharts({ habit }: HabitChartsProps) {
       className="space-y-6 mt-4"
     >
       <div className="space-y-2">
-        <h4 className="text-sm font-medium text-gray-400">Daily Completion</h4>
+        <h4 className="text-sm font-medium text-gray-400">Daily Completion (Last 3 Months)</h4>
         <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyData}>
-              <XAxis dataKey="date" stroke="#666" fontSize={12} interval={6} />
-              <YAxis stroke="#666" fontSize={12} ticks={[0, 1]} />
+            <BarChart data={monthlyData}>
+              <XAxis 
+                dataKey="date" 
+                stroke="#666" 
+                fontSize={12} 
+                interval={6}
+                tickFormatter={(value) => format(new Date(value), "MMM d")}
+              />
+              <YAxis 
+                stroke="#666" 
+                fontSize={12} 
+                ticks={[0, 1]}
+                tickFormatter={(value) => value === 1 ? "Complete" : "Incomplete"}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1f2937",
                   border: "1px solid #374151",
                   borderRadius: "0.375rem",
                 }}
+                formatter={(value, name) => [
+                  value === 1 ? "Completed" : "Not completed",
+                  "Status"
+                ]}
+                labelFormatter={(label) => format(new Date(label), "MMMM d, yyyy")}
               />
               <Bar
                 dataKey="completed"
                 fill={habit.color}
                 radius={[4, 4, 0, 0]}
+                name="Completion Status"
               />
             </BarChart>
           </ResponsiveContainer>
@@ -114,12 +156,16 @@ export function HabitCharts({ habit }: HabitChartsProps) {
 
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-gray-400">
-          Weekly Completion Rate
+          Monthly Performance (Last 6 Months)
         </h4>
         <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={completionData}>
-              <XAxis dataKey="week" stroke="#666" fontSize={12} />
+              <XAxis 
+                dataKey="month" 
+                stroke="#666" 
+                fontSize={12}
+              />
               <YAxis
                 stroke="#666"
                 fontSize={12}
@@ -133,13 +179,32 @@ export function HabitCharts({ habit }: HabitChartsProps) {
                   border: "1px solid #374151",
                   borderRadius: "0.375rem",
                 }}
+                formatter={(value, name) => [
+                  name === "completionRate" 
+                    ? `${value}%` 
+                    : `${value} days`,
+                  name === "completionRate" 
+                    ? "Completion Rate" 
+                    : "Longest Streak"
+                ]}
               />
+              <Legend />
               <Line
                 type="monotone"
-                dataKey="rate"
+                dataKey="completionRate"
+                name="Completion Rate"
                 stroke={habit.color}
                 strokeWidth={2}
                 dot={{ fill: habit.color }}
+              />
+              <Line
+                type="monotone"
+                dataKey="streak"
+                name="Longest Streak"
+                stroke={`${habit.color}80`}
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: `${habit.color}80` }}
               />
             </LineChart>
           </ResponsiveContainer>

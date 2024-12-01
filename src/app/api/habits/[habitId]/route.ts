@@ -4,6 +4,8 @@ import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
+import { startOfMonth, subMonths } from "date-fns"
+import { calculateHabitStats } from "@/lib/stats"
 
 export const runtime = 'nodejs'
 
@@ -41,6 +43,9 @@ export async function PATCH(
       ...(data.archived !== undefined && { archived: Boolean(data.archived) }),
     }
 
+    // Get data from 6 months ago
+    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6));
+
     const habit = await db.habit.update({
       where: {
         id: params.habitId,
@@ -49,18 +54,38 @@ export async function PATCH(
       data: sanitizedData,
       include: {
         entries: {
+          where: {
+            date: {
+              gte: sixMonthsAgo
+            }
+          },
           orderBy: {
             date: 'desc'
           },
-          take: 28,
         },
       },
     })
 
+    // Calculate stats for the updated habit
+    const serializedHabit = {
+      ...habit,
+      createdAt: habit.createdAt.toISOString(),
+      updatedAt: habit.updatedAt.toISOString(),
+      entries: habit.entries.map(entry => ({
+        ...entry,
+        date: entry.date.toISOString(),
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+      }))
+    };
+
+    const stats = calculateHabitStats(serializedHabit);
+
     revalidatePath('/')
     return NextResponse.json({
       success: true,
-      habit,
+      habit: serializedHabit,
+      stats,
       message: "Habit updated successfully"
     })
   } catch (error) {
@@ -79,7 +104,7 @@ export async function PATCH(
   }
 }
 
-// Delete habit - simplified with cascading delete
+// Delete habit
 export async function DELETE(
   _req: Request,
   { params }: { params: { habitId: string } }
@@ -90,7 +115,7 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Verify habit exists and belongs to user
+    // First verify habit exists and belongs to user
     const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
@@ -102,18 +127,27 @@ export async function DELETE(
       return new NextResponse("Habit not found", { status: 404 })
     }
 
-    // With cascading delete, this will automatically delete related entries
-    await db.habit.delete({
-      where: {
-        id: params.habitId,
-        userId,
-      },
-    })
+    // Use transaction to ensure all related data is deleted
+    await db.$transaction([
+      // First delete all associated entries
+      db.habitEntry.deleteMany({
+        where: {
+          habitId: params.habitId,
+        },
+      }),
+      // Then delete the habit itself
+      db.habit.delete({
+        where: {
+          id: params.habitId,
+          userId,
+        },
+      }),
+    ])
 
     revalidatePath('/')
     return NextResponse.json({
       success: true,
-      message: "Habit and all related entries deleted successfully"
+      message: "Habit deleted successfully"
     })
   } catch (error) {
     console.error('Error deleting habit:', error)
@@ -121,6 +155,9 @@ export async function DELETE(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         return new NextResponse("Habit not found", { status: 404 })
+      }
+      if (error.code === 'P2003') {
+        return new NextResponse("Cannot delete habit with existing entries", { status: 400 })
       }
     }
     
@@ -142,6 +179,9 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    // Get data from 6 months ago
+    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6));
+
     const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
@@ -149,10 +189,14 @@ export async function GET(
       },
       include: {
         entries: {
+          where: {
+            date: {
+              gte: sixMonthsAgo
+            }
+          },
           orderBy: {
             date: 'desc'
           },
-          take: 28,
         },
       },
     })
@@ -161,9 +205,25 @@ export async function GET(
       return new NextResponse("Habit not found", { status: 404 })
     }
 
+    // Serialize habit and calculate stats
+    const serializedHabit = {
+      ...habit,
+      createdAt: habit.createdAt.toISOString(),
+      updatedAt: habit.updatedAt.toISOString(),
+      entries: habit.entries.map(entry => ({
+        ...entry,
+        date: entry.date.toISOString(),
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+      }))
+    };
+
+    const stats = calculateHabitStats(serializedHabit);
+
     return NextResponse.json({
       success: true,
-      habit
+      habit: serializedHabit,
+      stats
     })
   } catch (error) {
     console.error('Error fetching habit:', error)

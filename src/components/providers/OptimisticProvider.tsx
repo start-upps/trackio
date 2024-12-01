@@ -4,7 +4,7 @@
 import { createContext, useContext, useOptimistic, useTransition, useState, useEffect } from "react";
 import type { Habit, HabitEntry, ToggleHabitResponse } from "@/types/habit";
 import { toast } from "sonner";
-import { format, isToday } from "date-fns";
+import { format, isToday, isBefore, startOfDay } from "date-fns";
 import { useRouter } from "next/navigation";
 
 interface OptimisticContextType {
@@ -35,8 +35,12 @@ export function OptimisticProvider({
   const [optimisticHabits, addOptimisticHabit] = useOptimistic(
     initialHabits,
     (state: Habit[], { habitId, date, isRemoving = false }: { habitId: string; date: string; isRemoving?: boolean }) => {
-      if (!isToday(new Date(date))) {
-        toast.error("You can only update today's habits");
+      const targetDate = new Date(date);
+      const now = new Date();
+      
+      // Only allow toggling for today or past dates
+      if (isBefore(startOfDay(now), startOfDay(targetDate))) {
+        toast.error("Cannot mark habits for future dates");
         return state;
       }
 
@@ -44,14 +48,16 @@ export function OptimisticProvider({
         if (habit.id !== habitId) return habit;
 
         const existingEntry = habit.entries.find(
-          (entry) => format(new Date(entry.date), 'yyyy-MM-dd') === format(new Date(date), 'yyyy-MM-dd')
+          (entry) => format(new Date(entry.date), 'yyyy-MM-dd') === format(targetDate, 'yyyy-MM-dd')
         );
 
         if (existingEntry) {
           toast.loading("Removing habit completion...");
           return {
             ...habit,
-            entries: habit.entries.filter((entry) => entry.date !== date),
+            entries: habit.entries.filter((entry) => 
+              format(new Date(entry.date), 'yyyy-MM-dd') !== format(targetDate, 'yyyy-MM-dd')
+            ),
           };
         }
 
@@ -74,7 +80,6 @@ export function OptimisticProvider({
   );
 
   const addFailedUpdate = (habitId: string, date: string) => {
-    if (!isToday(new Date(date))) return;
     setFailedUpdates(prev => [
       ...prev,
       { habitId, date, retryCount: 0 }
@@ -90,8 +95,11 @@ export function OptimisticProvider({
   };
 
   const toggleHabit = async (habitId: string, date: string) => {
-    if (!isToday(new Date(date))) {
-      toast.error("You can only track today's habits");
+    const targetDate = new Date(date);
+    const now = new Date();
+
+    if (isBefore(startOfDay(now), startOfDay(targetDate))) {
+      toast.error("Cannot mark habits for future dates");
       return;
     }
 
@@ -124,7 +132,7 @@ export function OptimisticProvider({
               : "Habit completion removed",
             { id: toastId }
           );
-          // Force refresh the page data
+          
           router.refresh();
         } else {
           throw new Error(result.error || "Failed to update habit");
@@ -136,14 +144,19 @@ export function OptimisticProvider({
           id: toastId,
           duration: 3000,
         });
-        // Refresh on error to ensure UI is in sync
+        
         router.refresh();
       }
     });
   };
 
   const retryFailedUpdates = async () => {
-    const updates = failedUpdates.filter(update => isToday(new Date(update.date)));
+    // Only retry failed updates for dates not in the future
+    const now = new Date();
+    const updates = failedUpdates.filter(update => 
+      !isBefore(startOfDay(now), startOfDay(new Date(update.date)))
+    );
+    
     setFailedUpdates(updates);
 
     for (const update of updates) {
@@ -174,7 +187,7 @@ export function OptimisticProvider({
     <OptimisticContext.Provider value={{ toggleHabit, isPending, retryFailedUpdates }}>
       {children}
       {failedUpdates.length > 0 && (
-        <div className="fixed bottom-4 left-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg">
+        <div className="fixed bottom-4 left-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg z-50">
           <p>Some updates failed to sync</p>
           <button 
             onClick={retryFailedUpdates}

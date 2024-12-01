@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { format, isToday } from "date-fns";
 import { Button } from "./ui/button";
-import { type Habit } from "@/types/habit";
+import { type Habit, type HabitCardProps, type DayData, type ViewMode } from "@/types/habit";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -33,14 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import GitHubStyleHabitCard from "./GitHubStyleHabitCard";
-
-interface HabitCardProps {
-  habit: Habit;
-  onUpdate?: (id: string, data: Partial<Habit>) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
-  onArchive?: (id: string) => Promise<void>;
-}
+import MonthlyHabitTracker from "./MonthlyHabitTracker";
 
 export function HabitCard({
   habit,
@@ -53,12 +46,12 @@ export function HabitCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
-  const [viewMode, setViewMode] = useState<"weekly" | "yearly">("weekly");
+  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
 
-  // Generate grid data for the 8x7 layout
-  const gridData = Array.from({ length: 56 }, (_, i) => {
+  // Generate weekly grid data (7 days)
+  const weeklyData: DayData[] = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
-    date.setDate(date.getDate() - (55 - i));
+    date.setDate(date.getDate() - (6 - i));
     const dateStr = format(date, "yyyy-MM-dd");
     return {
       date,
@@ -66,9 +59,12 @@ export function HabitCard({
       isCompleted: habit.entries.some(
         entry => format(new Date(entry.date), "yyyy-MM-dd") === dateStr && entry.completed
       ),
-      isToday: isToday(date)
+      isToday: isToday(date),
+      isFuture: date > new Date()
     };
   });
+
+  const todayCompleted = weeklyData[weeklyData.length - 1].isCompleted;
 
   const handleComplete = async () => {
     const today = new Date().toISOString();
@@ -167,7 +163,7 @@ export function HabitCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setViewMode(viewMode === "weekly" ? "yearly" : "weekly")}
+                  onClick={() => setViewMode(viewMode === "weekly" ? "monthly" : "weekly")}
                   className="rounded-xl w-10 h-10"
                 >
                   {viewMode === "weekly" ? (
@@ -178,7 +174,7 @@ export function HabitCard({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Switch to {viewMode === "weekly" ? "yearly" : "weekly"} view
+                Switch to {viewMode === "weekly" ? "monthly" : "weekly"} view
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -193,19 +189,16 @@ export function HabitCard({
                   className={cn(
                     "rounded-xl w-10 h-10",
                     "transition-all duration-200",
-                    gridData[gridData.length - 1].isCompleted &&
-                      "bg-opacity-20 text-white"
+                    todayCompleted && "bg-opacity-20 text-white"
                   )}
                   style={{
-                    backgroundColor: gridData[gridData.length - 1].isCompleted 
-                      ? habit.color 
-                      : "transparent"
+                    backgroundColor: todayCompleted ? habit.color : "transparent"
                   }}
                 >
                   <Check 
                     className={cn(
                       "w-5 h-5 transition-all",
-                      gridData[gridData.length - 1].isCompleted && "text-white"
+                      todayCompleted && "text-white"
                     )}
                   />
                 </Button>
@@ -257,26 +250,45 @@ export function HabitCard({
       {/* View Content */}
       {viewMode === "weekly" ? (
         <div className="grid grid-cols-7 gap-[2px]">
-          {gridData.map((day) => (
-            <motion.div
-              key={day.dateStr}
-              whileHover={{ scale: 1.2 }}
-              onClick={() => toggleHabit(habit.id, day.date.toISOString())}
-              className={cn(
-                "aspect-square rounded-[2px] cursor-pointer",
-                "transition-all duration-200"
-              )}
-              style={{
-                backgroundColor: habit.color,
-                opacity: day.isCompleted ? 1 : 0.15
-              }}
-            />
+          {weeklyData.map((day) => (
+            <TooltipProvider key={day.dateStr}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    whileHover={{ scale: 1.2 }}
+                    onClick={() => toggleHabit(habit.id, day.date.toISOString())}
+                    disabled={day.isFuture}
+                    className={cn(
+                      "aspect-square rounded-[2px] cursor-pointer",
+                      "transition-all duration-200",
+                      day.isToday && "ring-2 ring-white ring-offset-2 ring-offset-gray-900",
+                      day.isFuture && "opacity-50 cursor-not-allowed"
+                    )}
+                    style={{
+                      backgroundColor: habit.color,
+                      opacity: day.isCompleted ? 1 : 0.15
+                    }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-sm">
+                    <p>{format(day.date, "MMMM d, yyyy")}</p>
+                    <p className={cn(
+                      day.isCompleted ? "text-green-400" : "text-gray-400",
+                      day.isFuture && "text-gray-500"
+                    )}>
+                      {day.isFuture ? 'Future date' : day.isCompleted ? "Completed" : "Not completed"}
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ))}
         </div>
       ) : (
-        <GitHubStyleHabitCard 
-          habit={habit}
-          onToggle={(date) => toggleHabit(habit.id, date)}
+        <MonthlyHabitTracker
+          habits={[habit]}
+          onToggleHabit={toggleHabit}
         />
       )}
 

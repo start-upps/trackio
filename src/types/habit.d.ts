@@ -1,5 +1,4 @@
 // src/types/habit.d.ts
-
 // Base types for database entities
 export type HabitEntry = {
   id: string;
@@ -31,25 +30,37 @@ export interface HabitCardProps {
   onArchive?: (id: string) => Promise<void>;
 }
 
-export interface GitHubStyleHabitCardProps {
-  habit: Habit;
-  onToggle?: (date: string) => void;
+export interface MonthlyViewProps {
+  habits: Habit[];
+  onToggleHabit: (habitId: string, date: string) => Promise<void>;
   className?: string;
 }
 
 // View types
-export type ViewMode = "weekly" | "yearly";
-
-export type WeekData = {
-  weekNumber: number;
-  days: (Date | null)[];
-};
+export type ViewMode = "weekly" | "monthly";
 
 export interface DayData {
   date: Date;
   dateStr: string;
   isCompleted: boolean;
   isToday: boolean;
+  isFuture?: boolean;
+}
+
+// Monthly types
+export interface MonthlyStats {
+  month: string;
+  completions: number;
+  possibleDays: number;
+  completionRate: number;
+  longestStreak: number;
+  totalDays: number;
+}
+
+export interface MonthData {
+  date: Date;
+  entries: HabitEntry[];
+  stats: MonthlyStats;
 }
 
 // API request types
@@ -78,33 +89,30 @@ export type UpdateHabitEntry = {
 };
 
 // Statistics types
-export type HabitStats = {
+export interface HabitStats {
   currentStreak: number;
   longestStreak: number;
   completionRate: number;
   totalCompletions: number;
   daysTracked: number;
-};
-
-export interface YearlyStats extends HabitStats {
-  bestDay: string | null;
-  totalDays: number;
-  weeklyAverage: number;
-  monthlyAverage: number;
+  monthlyStats: MonthlyStats[];
+  bestMonth: MonthlyStats | null;
 }
 
-// View-specific types
-export interface HeatmapEntry {
+// Chart data types
+export interface ChartDataPoint {
   date: string;
-  intensity: number;
-  completed: boolean;
-  streakCount?: number;
+  completed: number;
+  month: string;
+  isToday: boolean;
 }
 
-export interface YearlyData {
-  year: number;
-  entries: HeatmapEntry[];
-  stats: YearlyStats;
+export interface MonthlyPerformanceData {
+  month: string;
+  completionRate: number;
+  streak: number;
+  totalDays: number;
+  completedDays: number;
 }
 
 // API response types
@@ -118,6 +126,7 @@ export interface ToggleHabitResponse {
 export interface FetchHabitResponse {
   habit: Habit;
   stats: HabitStats;
+  monthlyStats: MonthlyStats[];
 }
 
 export interface CreateHabitResponse {
