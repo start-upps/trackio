@@ -23,6 +23,35 @@ export type Habit = {
   entries: HabitEntry[];
 };
 
+// Component Props types
+export interface HabitCardProps {
+  habit: Habit;
+  onUpdate?: (id: string, data: Partial<Habit>) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  onArchive?: (id: string) => Promise<void>;
+}
+
+export interface GitHubStyleHabitCardProps {
+  habit: Habit;
+  onToggle?: (date: string) => void;
+  className?: string;
+}
+
+// View types
+export type ViewMode = "weekly" | "yearly";
+
+export type WeekData = {
+  weekNumber: number;
+  days: (Date | null)[];
+};
+
+export interface DayData {
+  date: Date;
+  dateStr: string;
+  isCompleted: boolean;
+  isToday: boolean;
+}
+
 // API request types
 export type CreateHabitRequest = {
   name: string;
@@ -57,50 +86,78 @@ export type HabitStats = {
   daysTracked: number;
 };
 
+export interface YearlyStats extends HabitStats {
+  bestDay: string | null;
+  totalDays: number;
+  weeklyAverage: number;
+  monthlyAverage: number;
+}
+
 // View-specific types
-export type HeatmapEntry = {
+export interface HeatmapEntry {
   date: string;
   intensity: number;
-};
+  completed: boolean;
+  streakCount?: number;
+}
 
-export type YearlyData = {
+export interface YearlyData {
   year: number;
   entries: HeatmapEntry[];
-};
+  stats: YearlyStats;
+}
 
 // API response types
-export type ToggleHabitResponse = {
+export interface ToggleHabitResponse {
   success: boolean;
   entry: HabitEntry | null;
   message?: string;
   error?: string;
-};
+}
 
-export type FetchHabitResponse = {
+export interface FetchHabitResponse {
   habit: Habit;
   stats: HabitStats;
-};
+}
 
-export type CreateHabitResponse = {
+export interface CreateHabitResponse {
   success: boolean;
   habit: Habit;
   error?: string;
-};
+}
 
-export type UpdateHabitResponse = {
+export interface UpdateHabitResponse {
   success: boolean;
   habit: Habit;
   error?: string;
-};
+}
 
-export type DeleteHabitResponse = {
+export interface DeleteHabitResponse {
   success: boolean;
   error?: string;
-};
+}
 
 // Common API error type
-export type ApiError = {
+export interface ApiError {
   message: string;
   code?: string;
   details?: unknown;
-};
+}
+
+// Utility types
+export type DateString = string; // ISO format
+export type HabitId = string;
+export type UserId = string;
+
+// State management types
+export interface HabitState {
+  habits: Habit[];
+  loading: boolean;
+  error: string | null;
+}
+
+export interface OptimisticUpdateParams {
+  habitId: string;
+  date: string;
+  completed: boolean;
+}

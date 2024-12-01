@@ -14,6 +14,8 @@ import {
   Trash2,
   MoreVertical,
   Check,
+  Calendar,
+  LayoutGrid
 } from "lucide-react";
 import { EditHabitDialog } from "./EditHabitDialog";
 import { toast } from "sonner";
@@ -31,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import GitHubStyleHabitCard from "./GitHubStyleHabitCard";
 
 interface HabitCardProps {
   habit: Habit;
@@ -50,6 +53,7 @@ export function HabitCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [viewMode, setViewMode] = useState<"weekly" | "yearly">("weekly");
 
   // Generate grid data for the 8x7 layout
   const gridData = Array.from({ length: 56 }, (_, i) => {
@@ -70,7 +74,7 @@ export function HabitCard({
     const today = new Date().toISOString();
     try {
       await toggleHabit(habit.id, today);
-      router.refresh(); // Refresh after toggle
+      router.refresh();
     } catch (error) {
       toast.error("Failed to update habit");
     }
@@ -83,7 +87,7 @@ export function HabitCard({
       setIsEditing(true);
       await onUpdate(habit.id, data);
       toast.success("Habit updated successfully");
-      router.refresh(); // Refresh after update
+      router.refresh();
     } catch (error) {
       toast.error("Failed to update habit");
     } finally {
@@ -98,7 +102,7 @@ export function HabitCard({
       setIsDeleting(true);
       await onDelete(habit.id);
       toast.success("Habit deleted successfully");
-      router.refresh(); // Refresh after delete
+      router.refresh();
     } catch (error) {
       toast.error("Failed to delete habit");
     } finally {
@@ -113,7 +117,7 @@ export function HabitCard({
       setIsArchiving(true);
       await onArchive(habit.id);
       toast.success(`Habit ${habit.archived ? 'unarchived' : 'archived'} successfully`);
-      router.refresh(); // Refresh after archive
+      router.refresh();
     } catch (error) {
       toast.error("Failed to archive habit");
     } finally {
@@ -157,6 +161,28 @@ export function HabitCard({
         </div>
 
         <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setViewMode(viewMode === "weekly" ? "yearly" : "weekly")}
+                  className="rounded-xl w-10 h-10"
+                >
+                  {viewMode === "weekly" ? (
+                    <Calendar className="w-5 h-5" />
+                  ) : (
+                    <LayoutGrid className="w-5 h-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Switch to {viewMode === "weekly" ? "yearly" : "weekly"} view
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -228,24 +254,31 @@ export function HabitCard({
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-7 gap-[2px]">
-        {gridData.map((day) => (
-          <motion.div
-            key={day.dateStr}
-            whileHover={{ scale: 1.2 }}
-            onClick={() => toggleHabit(habit.id, day.date.toISOString())}
-            className={cn(
-              "aspect-square rounded-[2px] cursor-pointer",
-              "transition-all duration-200"
-            )}
-            style={{
-              backgroundColor: habit.color,
-              opacity: day.isCompleted ? 1 : 0.15
-            }}
-          />
-        ))}
-      </div>
+      {/* View Content */}
+      {viewMode === "weekly" ? (
+        <div className="grid grid-cols-7 gap-[2px]">
+          {gridData.map((day) => (
+            <motion.div
+              key={day.dateStr}
+              whileHover={{ scale: 1.2 }}
+              onClick={() => toggleHabit(habit.id, day.date.toISOString())}
+              className={cn(
+                "aspect-square rounded-[2px] cursor-pointer",
+                "transition-all duration-200"
+              )}
+              style={{
+                backgroundColor: habit.color,
+                opacity: day.isCompleted ? 1 : 0.15
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <GitHubStyleHabitCard 
+          habit={habit}
+          onToggle={(date) => toggleHabit(habit.id, date)}
+        />
+      )}
 
       {/* Edit Dialog */}
       <EditHabitDialog
