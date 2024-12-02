@@ -5,7 +5,7 @@ import { useState, useCallback } from "react";
 import type { Habit, HabitStats, HabitUpdateInput } from "@/types/habit";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion } from "framer-motion";
-import { Plus, ListPlus } from "lucide-react";
+import { Plus, ListPlus, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -15,6 +15,8 @@ import { useOptimisticHabits } from "./providers/OptimisticProvider";
 interface HabitListProps {
   habits: Habit[];
   initialStats?: Record<string, HabitStats>;
+  onPageChange?: (page: number) => void;
+  onLimitChange?: (limit: number) => void;
 }
 
 interface MonthlyHabitViewProps {
@@ -26,13 +28,18 @@ function MonthlyHabitView({ habits }: MonthlyHabitViewProps): JSX.Element {
   return <MonthlyView habits={habits} onToggleHabit={toggleHabit} />;
 }
 
-export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Element {
+export function HabitList({ 
+  habits: initialHabits,
+  onPageChange,
+  onLimitChange 
+}: HabitListProps): JSX.Element {
   const [habits, setHabits] = useState<Habit[]>(initialHabits);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleDelete = useCallback(async (habitId: string): Promise<void> => {
     setHabits(current => current.filter(h => h.id !== habitId));
-    
     const toastId = toast.loading("Deleting habit...");
     
     try {
@@ -41,7 +48,8 @@ export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Elemen
       });
       
       if (!response.ok) {
-        throw new Error("Failed to delete habit");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete habit");
       }
       
       toast.success("Habit deleted successfully", { id: toastId });
@@ -49,19 +57,14 @@ export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Elemen
     } catch (error) {
       console.error("Error deleting habit:", error);
       setHabits(initialHabits);
-      toast.error("Failed to delete habit", { id: toastId });
+      toast.error(error instanceof Error ? error.message : "Failed to delete habit", { id: toastId });
+      setError("Failed to delete habit. Please try again.");
     }
   }, [initialHabits, router]);
 
   const handleUpdate = useCallback(async (habitId: string, data: Partial<HabitUpdateInput>): Promise<void> => {
-    setHabits(current =>
-      current.map(habit =>
-        habit.id === habitId
-          ? { ...habit, ...data }
-          : habit
-      )
-    );
-
+    setIsLoading(true);
+    setError(null);
     const toastId = toast.loading("Updating habit...");
 
     try {
@@ -72,24 +75,43 @@ export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Elemen
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update habit");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update habit");
       }
+
+      const result = await response.json();
+      
+      setHabits(current =>
+        current.map(habit =>
+          habit.id === habitId ? result.habit : habit
+        )
+      );
 
       toast.success("Habit updated successfully", { id: toastId });
       router.refresh();
     } catch (error) {
       console.error("Error updating habit:", error);
       setHabits(initialHabits);
-      toast.error("Failed to update habit", { id: toastId });
+      toast.error(error instanceof Error ? error.message : "Failed to update habit", { id: toastId });
+      setError("Failed to update habit. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   }, [initialHabits, router]);
 
   const handleCreateHabit = useCallback(() => {
     const element = document.getElementById('new-habit-trigger');
-    if (element) {
-      element.click();
-    }
+    element?.click();
   }, []);
+
+  if (error) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-red-400 mb-4">{error}</p>
+        <Button onClick={() => setError(null)}>Try Again</Button>
+      </div>
+    );
+  }
 
   if (habits.length === 0) {
     return (
@@ -97,6 +119,8 @@ export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Elemen
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center justify-center min-h-[400px] p-8"
+        role="region"
+        aria-label="Empty habits list"
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -131,6 +155,8 @@ export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Elemen
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6"
+        role="region"
+        aria-label="Habits list"
       >
         <MonthlyHabitView habits={habits} />
 
@@ -138,12 +164,13 @@ export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Elemen
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex justify-center py-4"
+          className="flex justify-center py-4 border-t border-gray-800"
         >
           <Button
             variant="ghost"
             className="text-gray-500 hover:text-gray-400"
             onClick={handleCreateHabit}
+            aria-label="Add another habit"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Another Habit

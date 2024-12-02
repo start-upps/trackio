@@ -59,7 +59,21 @@ export interface ApiResponse {
   message?: string;
 }
 
-// API response types
+// API response types with pagination
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface HabitsPaginatedResponse extends PaginatedResponse<Habit> {
+  activeHabits: number;
+  deletedHabits: number;
+}
+
 export interface ToggleHabitResponse extends ApiResponse {
   entry: HabitEntry | null;
 }
@@ -79,6 +93,18 @@ export interface UpdateHabitResponse extends ApiResponse {
 }
 
 export interface DeleteHabitResponse extends ApiResponse {}
+
+// Filter and query params
+export interface HabitQueryParams {
+  page?: number;
+  limit?: number;
+  showDeleted?: boolean;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  sortBy?: 'name' | 'createdAt' | 'updatedAt';
+  sortOrder?: 'asc' | 'desc';
+}
 
 // Component Props types
 export interface HabitCardProps {
@@ -100,6 +126,8 @@ export interface HabitGridViewProps {
 export interface HabitListProps {
   habits: Habit[];
   initialStats?: Record<string, HabitStats>;
+  onPageChange?: (page: number) => void;
+  onLimitChange?: (limit: number) => void;
 }
 
 // View types
@@ -127,6 +155,14 @@ export interface MonthlyStats {
   completionRate: number;
   longestStreak: number;
   totalDays: number;
+  dayStats: DayStats[];
+}
+
+export interface DayStats {
+  date: string;
+  completed: boolean;
+  isToday: boolean;
+  isFuture: boolean;
 }
 
 export interface HabitStats {
@@ -160,6 +196,18 @@ export interface HabitState {
   habits: Habit[];
   loading: boolean;
   error: string | null;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  filters: {
+    showDeleted: boolean;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  };
 }
 
 export interface OptimisticUpdateParams {
@@ -172,17 +220,3 @@ export interface OptimisticUpdateParams {
 export type DateString = string;
 export type HabitId = string;
 export type UserId = string;
-
-// Response types with pagination
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface HabitsPaginatedResponse extends PaginatedResponse<Habit> {
-  activeHabits: number;
-  deletedHabits: number;
-}

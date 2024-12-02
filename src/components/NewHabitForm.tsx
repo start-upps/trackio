@@ -20,12 +20,20 @@ const COLORS = [
 
 const ICONS = ["📝", "💪", "🎯", "📚", "🏃‍♂️", "🧘‍♂️", "💻", "🎨", "🎵", "✍️"] as const;
 
+const INPUT_MAX_LENGTH = 50;
+const DESCRIPTION_MAX_LENGTH = 100;
+
 type FormState = {
   name: string;
   description: string;
   color: typeof COLORS[number];
   icon: typeof ICONS[number];
 };
+
+interface FormErrors {
+  name?: string;
+  description?: string;
+}
 
 const initialFormState: FormState = {
   name: "",
@@ -53,6 +61,8 @@ function ColorButton({ color, isSelected, isDisabled, onClick }: ColorButtonProp
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
+      aria-label={`Select color ${color}`}
+      aria-pressed={isSelected}
       className={cn(
         "w-8 h-8 rounded-lg transition-all duration-200",
         isSelected && "ring-2 ring-white shadow-lg",
@@ -78,6 +88,8 @@ function IconButton({ icon, isSelected, isDisabled, onClick }: IconButtonProps) 
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
+      aria-label={`Select icon ${icon}`}
+      aria-pressed={isSelected}
       className={cn(
         "w-8 h-8 rounded-lg flex items-center justify-center",
         "bg-gray-800 transition-all duration-200",
@@ -91,35 +103,56 @@ function IconButton({ icon, isSelected, isDisabled, onClick }: IconButtonProps) 
 }
 
 export function NewHabitForm({ onClose }: NewHabitFormProps) {
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormState>(initialFormState);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState(false);
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    let isValid = true;
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+      isValid = false;
+    } else if (formData.name.trim().length > INPUT_MAX_LENGTH) {
+      newErrors.name = `Name must be less than ${INPUT_MAX_LENGTH} characters`;
+      isValid = false;
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required";
+      isValid = false;
+    } else if (formData.description.trim().length > DESCRIPTION_MAX_LENGTH) {
+      newErrors.description = `Description must be less than ${DESCRIPTION_MAX_LENGTH} characters`;
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const resetForm = () => {
     setFormData(initialFormState);
+    setErrors({});
     setLoading(false);
   };
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     
-    const { name, description, color, icon } = formData;
-    const trimmedName = name.trim();
-    const trimmedDescription = description.trim();
-
-    if (!trimmedName || !trimmedDescription) {
-      toast.error("Please fill in all fields");
+    if (!validateForm()) {
       return;
     }
 
+    const toastId = toast.loading("Creating habit...");
     setLoading(true);
-    const loadingToast = toast.loading("Creating habit...");
 
     try {
       const createHabitData: CreateHabitRequest = {
-        name: trimmedName,
-        description: trimmedDescription,
-        color,
-        icon
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        color: formData.color,
+        icon: formData.icon
       };
 
       const response = await fetch("/api/habits", {
@@ -129,15 +162,15 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to create habit");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create habit");
       }
 
       onClose?.();
       resetForm();
       
       toast.success("Habit created successfully!", {
-        id: loadingToast,
+        id: toastId,
         duration: 2000
       });
 
@@ -148,7 +181,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
       console.error("Error creating habit:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to create habit",
-        { id: loadingToast }
+        { id: toastId }
       );
       setLoading(false);
     }
@@ -159,6 +192,14 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
       ...prev,
       [field]: value
     }));
+    
+    // Clear error when user starts typing
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
   };
 
   return (
@@ -167,6 +208,8 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
       <div 
         className="p-4 rounded-xl border border-gray-800 bg-gray-900/50"
         style={{ backgroundColor: `${formData.color}10` }}
+        role="region"
+        aria-label="Habit preview"
       >
         <div className="flex items-center gap-3">
           <div 
@@ -189,50 +232,80 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
       {/* Form Fields */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-gray-300">
+          <label 
+            htmlFor="habit-name"
+            className="block text-sm font-medium mb-1.5 text-gray-300"
+          >
             Name
+            <span className="text-gray-400 text-xs ml-2">
+              ({formData.name.length}/{INPUT_MAX_LENGTH})
+            </span>
           </label>
           <input
+            id="habit-name"
             type="text"
             value={formData.name}
             onChange={e => handleInputChange('name', e.target.value)}
             required
-            maxLength={50}
+            maxLength={INPUT_MAX_LENGTH}
             disabled={loading}
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? "name-error" : undefined}
             className={cn(
               "w-full px-3 py-2 bg-gray-800/50 rounded-xl",
               "border border-gray-700/50",
               "focus:border-gray-600 focus:ring-1 focus:ring-gray-600",
               "transition-colors duration-200",
-              loading && "opacity-50 cursor-not-allowed"
+              loading && "opacity-50 cursor-not-allowed",
+              errors.name && "border-red-500"
             )}
             placeholder="e.g., Morning Meditation"
           />
+          {errors.name && (
+            <p id="name-error" className="mt-1 text-sm text-red-500">
+              {errors.name}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-gray-300">
+          <label 
+            htmlFor="habit-description"
+            className="block text-sm font-medium mb-1.5 text-gray-300"
+          >
             Description
+            <span className="text-gray-400 text-xs ml-2">
+              ({formData.description.length}/{DESCRIPTION_MAX_LENGTH})
+            </span>
           </label>
           <input
+            id="habit-description"
             type="text"
             value={formData.description}
             onChange={e => handleInputChange('description', e.target.value)}
             required
-            maxLength={100}
+            maxLength={DESCRIPTION_MAX_LENGTH}
             disabled={loading}
+            aria-invalid={Boolean(errors.description)}
+            aria-describedby={errors.description ? "description-error" : undefined}
             className={cn(
               "w-full px-3 py-2 bg-gray-800/50 rounded-xl",
               "border border-gray-700/50",
               "focus:border-gray-600 focus:ring-1 focus:ring-gray-600",
               "transition-colors duration-200",
-              loading && "opacity-50 cursor-not-allowed"
+              loading && "opacity-50 cursor-not-allowed",
+              errors.description && "border-red-500"
             )}
             placeholder="e.g., Meditate for 10 minutes every morning"
           />
+          {errors.description && (
+            <p id="description-error" className="mt-1 text-sm text-red-500">
+              {errors.description}
+            </p>
+          )}
         </div>
 
-        <div>
+        <div role="group" aria-label="Color selection">
           <label className="block text-sm font-medium mb-2 text-gray-300">
             Color
           </label>
@@ -249,7 +322,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
           </div>
         </div>
 
-        <div>
+        <div role="group" aria-label="Icon selection">
           <label className="block text-sm font-medium mb-2 text-gray-300">
             Icon
           </label>

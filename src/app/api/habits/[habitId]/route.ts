@@ -9,7 +9,64 @@ import { calculateHabitStats } from "@/lib/stats"
 
 export const runtime = 'nodejs'
 
-// Update habit
+// Helper function for consistent habit serialization
+function serializeHabit(habit: any) {
+  return {
+    ...habit,
+    createdAt: habit.createdAt.toISOString(),
+    updatedAt: habit.updatedAt.toISOString(),
+    deletedAt: habit.deletedAt?.toISOString() || undefined,
+    entries: habit.entries.map((entry: any) => ({
+      ...entry,
+      date: entry.date.toISOString(),
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+    }))
+  }
+}
+
+// Helper function for error handling
+function handleApiError(error: unknown) {
+  console.error('API Error:', error)
+  
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    switch (error.code) {
+      case 'P2002':
+        return NextResponse.json({
+          success: false,
+          error: {
+            message: "A habit with this name already exists",
+            code: error.code
+          }
+        }, { status: 409 })
+      case 'P2025':
+        return NextResponse.json({
+          success: false,
+          error: {
+            message: "Habit not found",
+            code: error.code
+          }
+        }, { status: 404 })
+      default:
+        return NextResponse.json({
+          success: false,
+          error: {
+            message: "Database error",
+            code: error.code,
+            details: error.message
+          }
+        }, { status: 500 })
+    }
+  }
+
+  return NextResponse.json({
+    success: false,
+    error: {
+      message: error instanceof Error ? error.message : "Internal Server Error"
+    }
+  }, { status: 500 })
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: { habitId: string } }
@@ -17,10 +74,12 @@ export async function PATCH(
   try {
     const userId = await verifyAuth()
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Unauthorized" }
+      }, { status: 401 })
     }
 
-    // First verify habit exists and belongs to user and is not deleted
     const existingHabit = await db.habit.findFirst({
       where: {
         id: params.habitId,
@@ -30,12 +89,13 @@ export async function PATCH(
     })
 
     if (!existingHabit) {
-      return new NextResponse("Habit not found", { status: 404 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Habit not found" }
+      }, { status: 404 })
     }
 
     const data = await req.json()
-    
-    // Validate and sanitize input data
     const sanitizedData = {
       ...(data.name && { name: data.name.trim() }),
       ...(data.description && { description: data.description.trim() }),
@@ -43,8 +103,7 @@ export async function PATCH(
       ...(data.icon && { icon: data.icon }),
     }
 
-    // Get data from 6 months ago
-    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6));
+    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6))
 
     const habit = await db.habit.update({
       where: {
@@ -55,58 +114,26 @@ export async function PATCH(
       data: sanitizedData,
       include: {
         entries: {
-          where: {
-            date: {
-              gte: sixMonthsAgo
-            }
-          },
-          orderBy: {
-            date: 'desc'
-          },
+          where: { date: { gte: sixMonthsAgo } },
+          orderBy: { date: 'desc' },
         },
       },
     })
 
-    // Calculate stats for the updated habit
-    const serializedHabit = {
-      ...habit,
-      createdAt: habit.createdAt.toISOString(),
-      updatedAt: habit.updatedAt.toISOString(),
-      deletedAt: habit.deletedAt?.toISOString() || undefined,
-      entries: habit.entries.map(entry => ({
-        ...entry,
-        date: entry.date.toISOString(),
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-      }))
-    };
-
-    const stats = calculateHabitStats(serializedHabit);
+    const serializedHabit = serializeHabit(habit)
+    const stats = calculateHabitStats(serializedHabit)
 
     revalidatePath('/')
     return NextResponse.json({
       success: true,
       habit: serializedHabit,
-      stats,
-      message: "Habit updated successfully"
+      stats
     })
   } catch (error) {
-    console.error('Error updating habit:', error)
-    
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return new NextResponse("A habit with this name already exists", { status: 409 })
-      }
-    }
-    
-    return new NextResponse(
-      error instanceof Error ? error.message : "Internal Error", 
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
-// Soft delete habit
 export async function DELETE(
   _req: Request,
   { params }: { params: { habitId: string } }
@@ -114,49 +141,44 @@ export async function DELETE(
   try {
     const userId = await verifyAuth()
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Unauthorized" }
+      }, { status: 401 })
     }
 
-    // First verify habit exists and belongs to user and is not already deleted
-    const habit = await db.habit.findFirst({
-      where: {
-        id: params.habitId,
-        userId,
-        isDeleted: false,
-      },
-    })
+    await db.$transaction(async (tx) => {
+      const habit = await tx.habit.findFirst({
+        where: {
+          id: params.habitId,
+          userId,
+          isDeleted: false,
+        },
+      })
 
-    if (!habit) {
-      return new NextResponse("Habit not found", { status: 404 })
-    }
+      if (!habit) {
+        throw new Error("Habit not found")
+      }
 
-    // Perform soft delete
-    await db.habit.update({
-      where: {
-        id: params.habitId,
-        userId,
-      },
-      data: {
-        isDeleted: true,
-        deletedAt: new Date(),
-      },
+      await tx.habit.update({
+        where: {
+          id: params.habitId,
+          userId,
+        },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      })
     })
 
     revalidatePath('/')
-    return NextResponse.json({
-      success: true,
-      message: "Habit deleted successfully"
-    })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting habit:', error)
-    return new NextResponse(
-      error instanceof Error ? error.message : "Internal Error", 
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
-// GET single habit
 export async function GET(
   _req: Request,
   { params }: { params: { habitId: string } }
@@ -164,11 +186,13 @@ export async function GET(
   try {
     const userId = await verifyAuth()
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Unauthorized" }
+      }, { status: 401 })
     }
 
-    // Get data from 6 months ago
-    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6));
+    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6))
 
     const habit = await db.habit.findFirst({
       where: {
@@ -178,37 +202,21 @@ export async function GET(
       },
       include: {
         entries: {
-          where: {
-            date: {
-              gte: sixMonthsAgo
-            }
-          },
-          orderBy: {
-            date: 'desc'
-          },
+          where: { date: { gte: sixMonthsAgo } },
+          orderBy: { date: 'desc' },
         },
       },
     })
 
     if (!habit) {
-      return new NextResponse("Habit not found", { status: 404 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Habit not found" }
+      }, { status: 404 })
     }
 
-    // Serialize habit and calculate stats
-    const serializedHabit = {
-      ...habit,
-      createdAt: habit.createdAt.toISOString(),
-      updatedAt: habit.updatedAt.toISOString(),
-      deletedAt: habit.deletedAt?.toISOString() || undefined,
-      entries: habit.entries.map(entry => ({
-        ...entry,
-        date: entry.date.toISOString(),
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-      }))
-    };
-
-    const stats = calculateHabitStats(serializedHabit);
+    const serializedHabit = serializeHabit(habit)
+    const stats = calculateHabitStats(serializedHabit)
 
     return NextResponse.json({
       success: true,
@@ -216,10 +224,60 @@ export async function GET(
       stats
     })
   } catch (error) {
-    console.error('Error fetching habit:', error)
-    return new NextResponse(
-      error instanceof Error ? error.message : "Internal Error", 
-      { status: 500 }
-    )
+    return handleApiError(error)
+  }
+}
+
+export async function PUT(
+  _req: Request,
+  { params }: { params: { habitId: string } }
+) {
+  try {
+    const userId = await verifyAuth()
+    if (!userId) {
+      return NextResponse.json({
+        success: false,
+        error: { message: "Unauthorized" }
+      }, { status: 401 })
+    }
+
+    const habit = await db.habit.findFirst({
+      where: {
+        id: params.habitId,
+        userId,
+        isDeleted: true,
+      },
+    })
+
+    if (!habit) {
+      return NextResponse.json({
+        success: false,
+        error: { message: "Deleted habit not found" }
+      }, { status: 404 })
+    }
+
+    const restoredHabit = await db.habit.update({
+      where: {
+        id: params.habitId,
+        userId,
+      },
+      data: {
+        isDeleted: false,
+        deletedAt: null,
+      },
+      include: {
+        entries: true,
+      },
+    })
+
+    const serializedHabit = serializeHabit(restoredHabit)
+
+    revalidatePath('/')
+    return NextResponse.json({
+      success: true,
+      habit: serializedHabit
+    })
+  } catch (error) {
+    return handleApiError(error)
   }
 }
