@@ -14,10 +14,11 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Get all habits, including non-archived ones first, then sorted by creation date
+    // Only get non-deleted habits
     const habits = await db.habit.findMany({
       where: { 
         userId,
+        isDeleted: false
       },
       include: {
         entries: {
@@ -25,17 +26,16 @@ export async function GET() {
           take: 28,
         },
       },
-      orderBy: [
-        { archived: 'asc' },  // Non-archived habits first
-        { createdAt: 'desc' } // Most recent habits first
-      ]
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
-    // Convert dates to ISO strings for serialization
     const serializedHabits = habits.map(habit => ({
       ...habit,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
+      deletedAt: habit.deletedAt?.toISOString() || undefined,
       entries: habit.entries.map(entry => ({
         ...entry,
         date: entry.date.toISOString(),
@@ -44,7 +44,10 @@ export async function GET() {
       })),
     }))
 
-    return NextResponse.json(serializedHabits)
+    return NextResponse.json({
+      success: true,
+      habits: serializedHabits
+    })
   } catch (error) {
     console.error('Error fetching habits:', error)
     return new NextResponse("Internal Error", { status: 500 })
@@ -66,35 +69,36 @@ export async function POST(req: Request) {
       return new NextResponse("Missing required fields", { status: 400 })
     }
 
-    // Create the new habit
+    // Create the habit with isDeleted initialized to false
     const habit = await db.habit.create({
       data: {
         name: name.trim(),
         description: description.trim(),
         color,
         icon,
-        userId
+        userId,
+        isDeleted: false
       },
       include: {
-        entries: true // Include entries in the response
+        entries: true
       }
     })
 
-    // Convert dates to ISO strings for serialization
+    // Serialize the habit for response
     const serializedHabit = {
       ...habit,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
+      deletedAt: habit.deletedAt?.toISOString() || undefined,
       entries: habit.entries.map(entry => ({
         ...entry,
         date: entry.date.toISOString(),
         createdAt: entry.createdAt.toISOString(),
         updatedAt: entry.updatedAt.toISOString(),
-      })),
+      }))
     }
 
-    // Force revalidation of the page
-    revalidatePath('/', 'page')
+    revalidatePath('/')
 
     return NextResponse.json({
       success: true,
@@ -115,4 +119,41 @@ export async function POST(req: Request) {
 
     return new NextResponse("Internal Error", { status: 500 })
   }
+}
+
+// Helper function for consistent habit serialization
+function serializeHabit(habit: any) {
+  return {
+    ...habit,
+    createdAt: habit.createdAt.toISOString(),
+    updatedAt: habit.updatedAt.toISOString(),
+    deletedAt: habit.deletedAt?.toISOString() || undefined,
+    entries: habit.entries?.map((entry: any) => ({
+      ...entry,
+      date: entry.date.toISOString(),
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+    })) || []
+  }
+}
+
+// Helper function for error responses
+function handleError(error: unknown) {
+  console.error('Error:', error)
+  
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    switch (error.code) {
+      case 'P2002':
+        return new NextResponse("A habit with this name already exists", { status: 409 })
+      case 'P2025':
+        return new NextResponse("Habit not found", { status: 404 })
+      default:
+        return new NextResponse(`Database error: ${error.code}`, { status: 500 })
+    }
+  }
+
+  return new NextResponse(
+    error instanceof Error ? error.message : "Internal Error", 
+    { status: 500 }
+  )
 }

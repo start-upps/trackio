@@ -27,6 +27,7 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
   const router = useRouter();
 
   const handleDelete = async (habitId: string) => {
+    // Optimistic update
     setHabits(current => current.filter(h => h.id !== habitId));
     
     try {
@@ -47,39 +48,8 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
     }
   };
 
-  const handleArchive = async (habitId: string) => {
-    const habit = habits.find(h => h.id === habitId);
-    if (!habit) return;
-
-    setHabits(current =>
-      current.map(h =>
-        h.id === habitId
-          ? { ...h, archived: !h.archived }
-          : h
-      )
-    );
-
-    try {
-      const response = await fetch(`/api/habits/${habitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ archived: !habit.archived }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to archive habit");
-      }
-
-      toast.success(habit.archived ? "Habit restored" : "Habit archived");
-      router.refresh();
-    } catch (error) {
-      console.error("Error archiving habit:", error);
-      setHabits(initialHabits);
-      toast.error("Failed to update habit");
-    }
-  };
-
   const handleUpdate = async (habitId: string, data: Partial<Habit>) => {
+    // Optimistic update
     setHabits(current =>
       current.map(habit =>
         habit.id === habitId

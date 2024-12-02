@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Pencil,
-  Archive,
   Trash2,
   MoreVertical,
   Check,
@@ -30,7 +29,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { HabitGridView } from "./HabitGridView";
@@ -39,13 +37,11 @@ export function HabitCard({
   habit,
   onUpdate,
   onDelete,
-  onArchive,
 }: HabitCardProps) {
   const router = useRouter();
   const { toggleHabit, isPending } = useOptimisticHabits();
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
   const [viewMode, setViewMode] = useState<"weekly" | "monthly">("weekly");
 
   // Generate weekly grid data (7 days)
@@ -106,21 +102,6 @@ export function HabitCard({
     }
   };
 
-  const handleArchive = async () => {
-    if (!onArchive) return;
-
-    try {
-      setIsArchiving(true);
-      await onArchive(habit.id);
-      toast.success(`Habit ${habit.archived ? 'unarchived' : 'archived'} successfully`);
-      router.refresh();
-    } catch (error) {
-      toast.error("Failed to archive habit");
-    } finally {
-      setIsArchiving(false);
-    }
-  };
-
   return (
     <motion.div
       layout
@@ -130,7 +111,7 @@ export function HabitCard({
         "bg-gray-900/95 rounded-xl p-4 shadow-lg",
         "border border-gray-800/50",
         "transition-all duration-200",
-        (isPending || isDeleting || isArchiving) && "opacity-75"
+        (isPending || isDeleting) && "opacity-75"
       )}
     >
       {/* Header */}
@@ -213,7 +194,7 @@ export function HabitCard({
                 variant="ghost" 
                 size="icon" 
                 className="rounded-xl"
-                disabled={isDeleting || isArchiving}
+                disabled={isDeleting}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
@@ -221,23 +202,15 @@ export function HabitCard({
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
                 onClick={() => setIsEditing(true)}
-                disabled={isDeleting || isArchiving}
+                disabled={isDeleting}
               >
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={handleArchive}
-                disabled={isDeleting || isArchiving}
-              >
-                <Archive className="mr-2 h-4 w-4" />
-                {habit.archived ? 'Unarchive' : 'Archive'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
                 className="text-red-400" 
                 onClick={handleDelete}
-                disabled={isDeleting || isArchiving}
+                disabled={isDeleting}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete

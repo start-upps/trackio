@@ -1,4 +1,5 @@
 // src/app/page.tsx
+// src/app/page.tsx
 import { redirect } from "next/navigation";
 import { verifyAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -13,7 +14,6 @@ export const metadata: Metadata = {
   description: "Track your daily habits",
 };
 
-// Disable caching to ensure fresh data
 export const revalidate = 0;
 
 async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]> {
@@ -23,6 +23,7 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
     const habits = await db.habit.findMany({
       where: { 
         userId,
+        isDeleted: false,
       },
       include: {
         entries: {
@@ -34,10 +35,9 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
           orderBy: { date: "desc" },
         },
       },
-      orderBy: [
-        { archived: 'asc' },  // Non-archived habits first
-        { createdAt: 'desc' } // Most recent habits first
-      ]
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
     return habits.map(habit => {
@@ -46,6 +46,7 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
         ...habit,
         createdAt: habit.createdAt.toISOString(),
         updatedAt: habit.updatedAt.toISOString(),
+        deletedAt: habit.deletedAt?.toISOString() || undefined,
         entries: habit.entries.map(entry => ({
           ...entry,
           date: entry.date.toISOString(),
@@ -58,6 +59,7 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
       const stats = calculateHabitStats(serializedHabit);
 
       return {
+        success: true,
         habit: serializedHabit,
         stats,
         monthlyStats: stats.monthlyStats
@@ -80,42 +82,27 @@ export default async function Page() {
   let error: Error | null = null;
 
   try {
-    // Fetch habits with stats
     habitsData = await getHabitsWithStats(userId);
-    
-    // Log success for debugging
     console.log(`Successfully fetched ${habitsData.length} habits`);
   } catch (e) {
     error = e instanceof Error ? e : new Error('An unexpected error occurred');
     console.error('Error in Page:', e);
   }
 
-  // Separate active and archived habits
-  const activeHabits = habitsData
-    .filter(data => !data.habit.archived)
-    .sort((a, b) => new Date(b.habit.createdAt).getTime() - new Date(a.habit.createdAt).getTime());
-
-  const archivedHabits = habitsData
-    .filter(data => data.habit.archived)
-    .sort((a, b) => new Date(b.habit.createdAt).getTime() - new Date(a.habit.createdAt).getTime());
-
-  // Debug logging
-  console.log(`Active habits: ${activeHabits.length}, Archived habits: ${archivedHabits.length}`);
+  // Sort habits by creation date and their entries by date
+  const sortedHabits = habitsData
+    .filter(data => data.success)
+    .sort((a, b) => new Date(b.habit.createdAt).getTime() - new Date(a.habit.createdAt).getTime())
+    .map(data => ({
+      ...data.habit,
+      entries: data.habit.entries.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      )
+    }));
 
   return (
     <ClientPage 
-      activeHabits={activeHabits.map(data => ({
-        ...data.habit,
-        entries: data.habit.entries.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
-      }))}
-      archivedHabits={archivedHabits.map(data => ({
-        ...data.habit,
-        entries: data.habit.entries.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
-      }))}
+      habits={sortedHabits}
       error={error}
     />
   );

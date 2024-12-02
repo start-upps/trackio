@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useContext, useOptimistic, useTransition, useState, useEffect, useCallback } from "react";
-import type { Habit, HabitEntry, ToggleHabitResponse } from "@/types/habit";
+import type { Habit, HabitEntry, ToggleHabitResponse, ApiError } from "@/types/habit";
 import { toast } from "sonner";
 import { format, isBefore, startOfDay } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,12 @@ interface FailedUpdate {
   habitId: string;
   date: string;
   retryCount: number;
+}
+
+function getErrorMessage(error: string | ApiError | undefined): string {
+  if (!error) return "Failed to update habit";
+  if (typeof error === "string") return error;
+  return error.message || "Failed to update habit";
 }
 
 export function OptimisticProvider({
@@ -133,7 +139,7 @@ export function OptimisticProvider({
           
           router.refresh();
         } else {
-          throw new Error(result.error || "Failed to update habit");
+          throw new Error(getErrorMessage(result.error));
         }
       } catch (error) {
         console.error("Error toggling habit:", error);

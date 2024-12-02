@@ -15,41 +15,82 @@ export type Habit = {
   description: string;
   color: string;
   icon: string;
-  archived?: boolean;
+  isDeleted: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   userId: string;
   entries: HabitEntry[];
 };
 
-// Monthly view types
-export interface MonthlyViewProps {
-  habits: Habit[];
-  onToggleHabit: (habitId: string, date: string) => Promise<void>;
-  className?: string;
+// API Schema types
+export interface HabitCreateInput {
+  name: string;
+  description: string;
+  color?: string;
+  icon?: string;
 }
 
-export interface MonthData {
-  date: Date;
-  entries: HabitEntry[];
-  stats: MonthlyStats;
+export interface HabitUpdateInput {
+  name?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
 }
 
-export interface MonthlyStats {
-  month: string;
-  completions: number;
-  possibleDays: number;
-  completionRate: number;
-  longestStreak: number;
-  totalDays: number;
+// API request types
+export interface CreateHabitRequest extends HabitCreateInput {}
+export interface UpdateHabitRequest extends HabitUpdateInput {}
+export interface ToggleHabitRequest {
+  date: string;
 }
+
+// Common error type
+export type ApiError = {
+  message: string;
+  code?: string;
+  details?: unknown;
+};
+
+// Base API response
+export interface ApiResponse {
+  success: boolean;
+  error?: string | ApiError;
+  message?: string;
+}
+
+// API response types
+export interface ToggleHabitResponse extends ApiResponse {
+  entry: HabitEntry | null;
+}
+
+export interface FetchHabitResponse extends ApiResponse {
+  habit: Habit;
+  stats: HabitStats;
+  monthlyStats: MonthlyStats[];
+}
+
+export interface CreateHabitResponse extends ApiResponse {
+  habit: Habit;
+}
+
+export interface UpdateHabitResponse extends ApiResponse {
+  habit: Habit;
+}
+
+export interface DeleteHabitResponse extends ApiResponse {}
 
 // Component Props types
 export interface HabitCardProps {
   habit: Habit;
-  onUpdate?: (id: string, data: Partial<Habit>) => Promise<void>;
+  onUpdate?: (id: string, data: Partial<HabitUpdateInput>) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
-  onArchive?: (id: string) => Promise<void>;
+}
+
+export interface MonthlyViewProps {
+  habits: Habit[];
+  onToggleHabit: (habitId: string, date: string) => Promise<void>;
+  className?: string;
 }
 
 export interface HabitGridViewProps {
@@ -72,7 +113,22 @@ export interface DayData {
   isFuture?: boolean;
 }
 
+export interface MonthData {
+  date: Date;
+  entries: HabitEntry[];
+  stats: MonthlyStats;
+}
+
 // Statistics types
+export interface MonthlyStats {
+  month: string;
+  completions: number;
+  possibleDays: number;
+  completionRate: number;
+  longestStreak: number;
+  totalDays: number;
+}
+
 export interface HabitStats {
   currentStreak: number;
   longestStreak: number;
@@ -99,44 +155,6 @@ export interface MonthlyPerformanceData {
   completedDays: number;
 }
 
-// API response types
-export interface ToggleHabitResponse {
-  success: boolean;
-  entry: HabitEntry | null;
-  message?: string;
-  error?: string;
-}
-
-export interface FetchHabitResponse {
-  habit: Habit;
-  stats: HabitStats;
-  monthlyStats: MonthlyStats[];
-}
-
-export interface CreateHabitResponse {
-  success: boolean;
-  habit: Habit;
-  error?: string;
-}
-
-export interface UpdateHabitResponse {
-  success: boolean;
-  habit: Habit;
-  error?: string;
-}
-
-export interface DeleteHabitResponse {
-  success: boolean;
-  error?: string;
-}
-
-// Common API error type
-export interface ApiError {
-  message: string;
-  code?: string;
-  details?: unknown;
-}
-
 // State management types
 export interface HabitState {
   habits: Habit[];
@@ -148,4 +166,23 @@ export interface OptimisticUpdateParams {
   habitId: string;
   date: string;
   completed: boolean;
+}
+
+// Utility types
+export type DateString = string;
+export type HabitId = string;
+export type UserId = string;
+
+// Response types with pagination
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface HabitsPaginatedResponse extends PaginatedResponse<Habit> {
+  activeHabits: number;
+  deletedHabits: number;
 }

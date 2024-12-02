@@ -5,8 +5,6 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  // Add preview features if needed
-  previewFeatures = []
 }
 
 model User {
@@ -18,7 +16,7 @@ model User {
   updatedAt DateTime @updatedAt
   habits    Habit[]
 
-  @@map("users") // Explicit table naming
+  @@map("users")
   @@index([email])
 }
 
@@ -28,7 +26,8 @@ model Habit {
   description String
   color       String
   icon        String
-  archived    Boolean      @default(false)
+  isDeleted   Boolean      @default(false)
+  deletedAt   DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   userId      String
@@ -37,7 +36,7 @@ model Habit {
 
   @@map("habits")
   @@index([userId])
-  @@index([archived])
+  @@index([isDeleted])
   @@index([createdAt])
 }
 

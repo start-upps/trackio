@@ -64,23 +64,19 @@ function ErrorDisplay({ error }: { error: Error }) {
 }
 
 export default function ClientPage({ 
-  activeHabits: initialActiveHabits,
-  archivedHabits: initialArchivedHabits,
+  habits: initialHabits,
   error 
 }: { 
-  activeHabits: Habit[],
-  archivedHabits: Habit[],
+  habits: Habit[],
   error?: Error | null 
 }) {
   const router = useRouter();
-  const [activeHabits, setActiveHabits] = useState(initialActiveHabits);
-  const [archivedHabits, setArchivedHabits] = useState(initialArchivedHabits);
+  const [habits, setHabits] = useState(initialHabits);
 
   // Update local state when props change
   useEffect(() => {
-    setActiveHabits(initialActiveHabits);
-    setArchivedHabits(initialArchivedHabits);
-  }, [initialActiveHabits, initialArchivedHabits]);
+    setHabits(initialHabits);
+  }, [initialHabits]);
 
   // Auto-refresh when window gains focus
   useEffect(() => {
@@ -95,8 +91,6 @@ export default function ClientPage({
   if (error) {
     return <ErrorDisplay error={error} />;
   }
-
-  const hasNoHabits = activeHabits.length === 0 && archivedHabits.length === 0;
 
   return (
     <main className="container mx-auto max-w-[1200px] p-4">
@@ -113,30 +107,17 @@ export default function ClientPage({
 
       <Suspense fallback={<Loading />}>
         <div className="space-y-8">
-          {/* Active Habits */}
-          <section>
-            {hasNoHabits ? (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-400 mb-4">
-                  No habits tracked yet
-                </h3>
-                <p className="text-gray-500">
-                  Create your first habit to start tracking your progress
-                </p>
-              </div>
-            ) : activeHabits.length > 0 && (
-              <MonthlyViewWithOptimistic habits={activeHabits} />
-            )}
-          </section>
-
-          {/* Archived Habits */}
-          {archivedHabits.length > 0 && (
-            <section className="pt-8 border-t border-gray-800">
-              <h2 className="text-xl font-bold text-gray-400 mb-4">
-                Archived Habits
-              </h2>
-              <MonthlyViewWithOptimistic habits={archivedHabits} />
-            </section>
+          {habits.length === 0 ? (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-400 mb-4">
+                No habits tracked yet
+              </h3>
+              <p className="text-gray-500">
+                Create your first habit to start tracking your progress
+              </p>
+            </div>
+          ) : (
+            <MonthlyViewWithOptimistic habits={habits} />
           )}
         </div>
       </Suspense>

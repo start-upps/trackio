@@ -20,11 +20,12 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // First verify habit exists and belongs to user
+    // First verify habit exists and belongs to user and is not deleted
     const existingHabit = await db.habit.findFirst({
       where: {
         id: params.habitId,
         userId,
+        isDeleted: false,
       },
     })
 
@@ -40,7 +41,6 @@ export async function PATCH(
       ...(data.description && { description: data.description.trim() }),
       ...(data.color && { color: data.color }),
       ...(data.icon && { icon: data.icon }),
-      ...(data.archived !== undefined && { archived: Boolean(data.archived) }),
     }
 
     // Get data from 6 months ago
@@ -50,6 +50,7 @@ export async function PATCH(
       where: {
         id: params.habitId,
         userId,
+        isDeleted: false,
       },
       data: sanitizedData,
       include: {
@@ -71,6 +72,7 @@ export async function PATCH(
       ...habit,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
+      deletedAt: habit.deletedAt?.toISOString() || undefined,
       entries: habit.entries.map(entry => ({
         ...entry,
         date: entry.date.toISOString(),
@@ -104,7 +106,7 @@ export async function PATCH(
   }
 }
 
-// Delete habit
+// Soft delete habit
 export async function DELETE(
   _req: Request,
   { params }: { params: { habitId: string } }
@@ -115,11 +117,12 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // First verify habit exists and belongs to user
+    // First verify habit exists and belongs to user and is not already deleted
     const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
         userId,
+        isDeleted: false,
       },
     })
 
@@ -127,22 +130,17 @@ export async function DELETE(
       return new NextResponse("Habit not found", { status: 404 })
     }
 
-    // Use transaction to ensure all related data is deleted
-    await db.$transaction([
-      // First delete all associated entries
-      db.habitEntry.deleteMany({
-        where: {
-          habitId: params.habitId,
-        },
-      }),
-      // Then delete the habit itself
-      db.habit.delete({
-        where: {
-          id: params.habitId,
-          userId,
-        },
-      }),
-    ])
+    // Perform soft delete
+    await db.habit.update({
+      where: {
+        id: params.habitId,
+        userId,
+      },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    })
 
     revalidatePath('/')
     return NextResponse.json({
@@ -151,16 +149,6 @@ export async function DELETE(
     })
   } catch (error) {
     console.error('Error deleting habit:', error)
-    
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        return new NextResponse("Habit not found", { status: 404 })
-      }
-      if (error.code === 'P2003') {
-        return new NextResponse("Cannot delete habit with existing entries", { status: 400 })
-      }
-    }
-    
     return new NextResponse(
       error instanceof Error ? error.message : "Internal Error", 
       { status: 500 }
@@ -186,6 +174,7 @@ export async function GET(
       where: {
         id: params.habitId,
         userId,
+        isDeleted: false,
       },
       include: {
         entries: {
@@ -210,6 +199,7 @@ export async function GET(
       ...habit,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
+      deletedAt: habit.deletedAt?.toISOString() || undefined,
       entries: habit.entries.map(entry => ({
         ...entry,
         date: entry.date.toISOString(),
