@@ -5,12 +5,19 @@ import { useState, useCallback } from "react";
 import type { Habit, HabitStats, HabitUpdateInput } from "@/types/habit";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion } from "framer-motion";
-import { Plus, ListPlus, Settings } from "lucide-react";
+import { Plus, ListPlus, Settings, Grid, List } from "lucide-react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import MonthlyView from "./MonthlyHabitTracker";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
+import { HabitRow } from "./HabitRow";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface HabitListProps {
   habits: Habit[];
@@ -19,11 +26,9 @@ interface HabitListProps {
   onLimitChange?: (limit: number) => void;
 }
 
-interface MonthlyHabitViewProps {
-  habits: Habit[];
-}
+type ViewMode = "grid" | "list";
 
-function MonthlyHabitView({ habits }: MonthlyHabitViewProps): JSX.Element {
+function MonthlyHabitView({ habits }: { habits: Habit[] }): JSX.Element {
   const { toggleHabit } = useOptimisticHabits();
   return <MonthlyView habits={habits} onToggleHabit={toggleHabit} />;
 }
@@ -36,7 +41,9 @@ export function HabitList({
   const [habits, setHabits] = useState<Habit[]>(initialHabits);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const router = useRouter();
+  const { toggleHabit } = useOptimisticHabits();
 
   const handleDelete = useCallback(async (habitId: string): Promise<void> => {
     setHabits(current => current.filter(h => h.id !== habitId));
@@ -99,6 +106,47 @@ export function HabitList({
     }
   }, [initialHabits, router]);
 
+  const handleArchive = useCallback(async (habitId: string): Promise<void> => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+
+    setIsLoading(true);
+    const toastId = toast.loading(habit.isDeleted ? "Restoring habit..." : "Archiving habit...");
+
+    try {
+      const response = await fetch(`/api/habits/${habitId}`, {
+        method: habit.isDeleted ? "PUT" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDeleted: !habit.isDeleted }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update habit");
+      }
+
+      const result = await response.json();
+      
+      setHabits(current =>
+        current.map(h =>
+          h.id === habitId ? result.habit : h
+        )
+      );
+
+      toast.success(
+        habit.isDeleted ? "Habit restored successfully" : "Habit archived successfully", 
+        { id: toastId }
+      );
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating habit:", error);
+      setHabits(initialHabits);
+      toast.error(error instanceof Error ? error.message : "Failed to update habit", { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [habits, initialHabits, router]);
+
   const handleCreateHabit = useCallback(() => {
     const element = document.getElementById('new-habit-trigger');
     element?.click();
@@ -158,8 +206,48 @@ export function HabitList({
         role="region"
         aria-label="Habits list"
       >
-        <MonthlyHabitView habits={habits} />
+        {/* View Toggle */}
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2">
+                {viewMode === "grid" ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                View
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewMode("grid")}>
+                <Grid className="mr-2 h-4 w-4" />
+                Grid View
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setViewMode("list")}>
+                <List className="mr-2 h-4 w-4" />
+                List View
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
+        {/* Habits Display */}
+        {viewMode === "grid" ? (
+          <MonthlyHabitView habits={habits} />
+        ) : (
+          <div className="space-y-4">
+            {habits.map(habit => (
+              <HabitRow
+                key={habit.id}
+                habit={habit}
+                onDelete={handleDelete}
+                onArchive={handleArchive}
+                onEdit={(habit) => handleUpdate(habit.id, habit)}
+                onToggle={toggleHabit}
+                isLoading={isLoading}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Add Habit Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
