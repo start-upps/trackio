@@ -1,6 +1,8 @@
 // src/components/MonthlyHabitTracker.tsx
-import { useState, useMemo } from 'react';
-import { format, getDaysInMonth, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
+"use client";
+
+import { useState, useMemo, useCallback } from 'react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,11 +20,58 @@ interface MonthlyViewProps {
   className?: string;
 }
 
-export default function MonthlyView({ 
-  habits, 
-  onToggleHabit,
-  className 
-}: MonthlyViewProps) {
+interface DayButtonProps {
+  day: Date;
+  habit: Habit;
+  isCompleted: boolean;
+  isFuture: boolean;
+  onToggle: () => void;
+}
+
+function DayButton({ day, habit, isCompleted, isFuture, onToggle }: DayButtonProps) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onToggle}
+            className={cn(
+              "w-full h-12 flex items-center justify-center",
+              "transition-all duration-200",
+              !isFuture && "hover:bg-gray-800",
+              isFuture && "opacity-50 cursor-not-allowed"
+            )}
+            style={{ color: habit.color }}
+            disabled={isFuture}
+            aria-label={`${habit.name} for ${format(day, 'MMMM d, yyyy')}`}
+          >
+            {isCompleted ? (
+              <div 
+                className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                style={{ backgroundColor: habit.color }}
+              >
+                ✓
+              </div>
+            ) : (
+              <div className="w-6 h-6 rounded-full border-2 border-current opacity-25" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{format(day, 'MMMM d, yyyy')}</p>
+          <p className={cn(
+            isCompleted ? 'text-green-400' : 'text-gray-400',
+            isFuture && 'text-gray-500'
+          )}>
+            {isFuture ? 'Future date' : isCompleted ? 'Completed' : 'Not completed'}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+export default function MonthlyView({ habits, onToggleHabit, className }: MonthlyViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const daysInMonth = useMemo(() => {
@@ -31,25 +80,16 @@ export default function MonthlyView({
     return eachDayOfInterval({ start, end });
   }, [currentDate]);
 
-  const handlePrevMonth = () => {
+  const handleDateChange = useCallback((increment: number) => {
     setCurrentDate(date => {
       const newDate = new Date(date);
-      newDate.setMonth(date.getMonth() - 1);
+      newDate.setMonth(date.getMonth() + increment);
       return newDate;
     });
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(date => {
-      const newDate = new Date(date);
-      newDate.setMonth(date.getMonth() + 1);
-      return newDate;
-    });
-  };
+  }, []);
 
   return (
     <div className={cn("w-full overflow-x-auto", className)}>
-      {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4 sticky left-0 z-10">
         <h2 className="text-xl font-bold">
           {format(currentDate, 'MMMM yyyy')}
@@ -58,7 +98,7 @@ export default function MonthlyView({
           <Button
             variant="outline"
             size="sm"
-            onClick={handlePrevMonth}
+            onClick={() => handleDateChange(-1)}
             className="h-8 w-8 p-0"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -74,7 +114,7 @@ export default function MonthlyView({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleNextMonth}
+            onClick={() => handleDateChange(1)}
             className="h-8 w-8 p-0"
           >
             <ChevronRight className="h-4 w-4" />
@@ -82,7 +122,6 @@ export default function MonthlyView({
         </div>
       </div>
 
-      {/* Spreadsheet Table */}
       <div className="border border-gray-800 rounded-lg overflow-hidden">
         <table className="w-full border-collapse">
           <thead>
@@ -139,46 +178,13 @@ export default function MonthlyView({
                         isToday(day) && "bg-gray-800/50"
                       )}
                     >
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => !isFuture && onToggleHabit(habit.id, day.toISOString())}
-                              className={cn(
-                                "w-full h-12 flex items-center justify-center",
-                                "transition-all duration-200",
-                                !isFuture && "hover:bg-gray-800",
-                                isFuture && "opacity-50 cursor-not-allowed"
-                              )}
-                              style={{
-                                color: habit.color
-                              }}
-                              disabled={isFuture}
-                              aria-label={`${habit.name} for ${format(day, 'MMMM d, yyyy')}`}
-                            >
-                              {isCompleted ? (
-                                <div 
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-                                  style={{ backgroundColor: habit.color }}
-                                >
-                                  ✓
-                                </div>
-                              ) : (
-                                <div className="w-6 h-6 rounded-full border-2 border-current opacity-25" />
-                              )}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{format(day, 'MMMM d, yyyy')}</p>
-                            <p className={cn(
-                              isCompleted ? 'text-green-400' : 'text-gray-400',
-                              isFuture && 'text-gray-500'
-                            )}>
-                              {isFuture ? 'Future date' : isCompleted ? 'Completed' : 'Not completed'}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <DayButton
+                        day={day}
+                        habit={habit}
+                        isCompleted={isCompleted}
+                        isFuture={isFuture}
+                        onToggle={() => !isFuture && onToggleHabit(habit.id, day.toISOString())}
+                      />
                     </td>
                   );
                 })}
