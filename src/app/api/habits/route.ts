@@ -4,11 +4,13 @@ import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
+import { startOfMonth, subMonths } from "date-fns"
 import type { 
   Habit, 
   HabitEntry, 
   CreateHabitRequest, 
-  ApiResponse 
+  ApiResponse,
+  HabitsPaginatedResponse
 } from "@/types/habit"
 
 export const runtime = 'nodejs'
@@ -83,7 +85,9 @@ function handleApiError(error: unknown): NextResponse<ApiResponse> {
   }, { status: 500 })
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(
+  request: Request
+): Promise<NextResponse<ApiResponse | HabitsPaginatedResponse>> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
@@ -93,32 +97,61 @@ export async function GET(): Promise<NextResponse> {
       }, { status: 401 })
     }
 
-    const habits = await db.habit.findMany({
-      where: { 
-        userId,
-        isDeleted: false
-      },
-      include: {
-        entries: {
-          orderBy: { date: "desc" },
-          take: 28,
-        },
-      },
-      orderBy: {
-        createdAt: 'desc'
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const showDeleted = searchParams.get('showDeleted') === 'true'
+    const startDate = searchParams.get('startDate') 
+      ? new Date(searchParams.get('startDate')!)
+      : startOfMonth(subMonths(new Date(), 6))
+
+    const where = {
+      userId,
+      isDeleted: showDeleted ? undefined : false,
+      entries: {
+        some: {
+          date: { gte: startDate }
+        }
       }
-    })
+    }
+
+    const [total, habits] = await db.$transaction([
+      db.habit.count({ where }),
+      db.habit.findMany({
+        where,
+        include: {
+          entries: {
+            where: { date: { gte: startDate } },
+            orderBy: { date: "desc" }
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit
+      })
+    ])
+
+    const [activeCount, deletedCount] = await db.$transaction([
+      db.habit.count({ where: { ...where, isDeleted: false } }),
+      db.habit.count({ where: { ...where, isDeleted: true } })
+    ])
 
     return NextResponse.json({
       success: true,
-      habits: habits.map(serializeHabit)
+      data: habits.map(serializeHabit),
+      total,
+      page,
+      pageSize: limit,
+      totalPages: Math.ceil(total / limit),
+      activeHabits: activeCount,
+      deletedHabits: deletedCount
     })
   } catch (error) {
     return handleApiError(error)
   }
 }
 
-export async function POST(req: Request): Promise<NextResponse> {
+export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
