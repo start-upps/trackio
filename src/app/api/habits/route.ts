@@ -4,17 +4,95 @@ import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
+import type { 
+  Habit, 
+  HabitEntry, 
+  CreateHabitRequest, 
+  ApiResponse 
+} from "@/types/habit"
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+type HabitWithEntries = Prisma.HabitGetPayload<{
+  include: { entries: true }
+}>
+
+function serializeHabit(habit: HabitWithEntries): Habit {
+  return {
+    ...habit,
+    createdAt: habit.createdAt.toISOString(),
+    updatedAt: habit.updatedAt.toISOString(),
+    deletedAt: habit.deletedAt?.toISOString() || undefined,
+    entries: habit.entries.map((entry): HabitEntry => ({
+      ...entry,
+      date: entry.date.toISOString(),
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+    }))
+  }
+}
+
+function handleApiError(error: unknown): NextResponse<ApiResponse> {
+  console.error('API Error:', error)
+  
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    switch (error.code) {
+      case 'P2002':
+        return NextResponse.json({
+          success: false,
+          error: {
+            message: "A habit with this name already exists",
+            code: error.code
+          }
+        }, { status: 409 })
+      case 'P2025':
+        return NextResponse.json({
+          success: false,
+          error: {
+            message: "Habit not found",
+            code: error.code
+          }
+        }, { status: 404 })
+      default:
+        return NextResponse.json({
+          success: false,
+          error: {
+            message: "Database error",
+            code: error.code,
+            details: error.message
+          }
+        }, { status: 500 })
+    }
+  }
+  
+  if (error instanceof SyntaxError) {
+    return NextResponse.json({
+      success: false,
+      error: {
+        message: "Invalid request data",
+        details: error.message
+      }
+    }, { status: 400 })
+  }
+
+  return NextResponse.json({
+    success: false,
+    error: {
+      message: error instanceof Error ? error.message : "Internal Server Error"
+    }
+  }, { status: 500 })
+}
+
+export async function GET(): Promise<NextResponse> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Unauthorized" }
+      }, { status: 401 })
     }
 
-    // Only get non-deleted habits
     const habits = await db.habit.findMany({
       where: { 
         userId,
@@ -31,45 +109,41 @@ export async function GET() {
       }
     })
 
-    const serializedHabits = habits.map(habit => ({
-      ...habit,
-      createdAt: habit.createdAt.toISOString(),
-      updatedAt: habit.updatedAt.toISOString(),
-      deletedAt: habit.deletedAt?.toISOString() || undefined,
-      entries: habit.entries.map(entry => ({
-        ...entry,
-        date: entry.date.toISOString(),
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-      })),
-    }))
-
     return NextResponse.json({
       success: true,
-      habits: serializedHabits
+      habits: habits.map(serializeHabit)
     })
   } catch (error) {
-    console.error('Error fetching habits:', error)
-    return new NextResponse("Internal Error", { status: 500 })
+    return handleApiError(error)
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Unauthorized" }
+      }, { status: 401 })
     }
 
-    const body = await req.json()
+    const body = await req.json() as CreateHabitRequest
     
-    const { name, description, color = "#E040FB", icon = "📝" } = body
+    const { 
+      name, 
+      description, 
+      color = "#E040FB", 
+      icon = "📝" 
+    } = body
 
     if (!name?.trim() || !description?.trim()) {
-      return new NextResponse("Missing required fields", { status: 400 })
+      return NextResponse.json({
+        success: false,
+        error: { message: "Missing required fields" }
+      }, { status: 400 })
     }
 
-    // Create the habit with isDeleted initialized to false
     const habit = await db.habit.create({
       data: {
         name: name.trim(),
@@ -84,76 +158,13 @@ export async function POST(req: Request) {
       }
     })
 
-    // Serialize the habit for response
-    const serializedHabit = {
-      ...habit,
-      createdAt: habit.createdAt.toISOString(),
-      updatedAt: habit.updatedAt.toISOString(),
-      deletedAt: habit.deletedAt?.toISOString() || undefined,
-      entries: habit.entries.map(entry => ({
-        ...entry,
-        date: entry.date.toISOString(),
-        createdAt: entry.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-      }))
-    }
-
     revalidatePath('/')
 
     return NextResponse.json({
       success: true,
-      habit: serializedHabit
+      habit: serializeHabit(habit)
     })
   } catch (error) {
-    console.error('Error creating habit:', error)
-    
-    if (error instanceof SyntaxError) {
-      return new NextResponse("Invalid request data", { status: 400 })
-    }
-    
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return new NextResponse("A habit with this name already exists", { status: 409 })
-      }
-    }
-
-    return new NextResponse("Internal Error", { status: 500 })
+    return handleApiError(error)
   }
-}
-
-// Helper function for consistent habit serialization
-function serializeHabit(habit: any) {
-  return {
-    ...habit,
-    createdAt: habit.createdAt.toISOString(),
-    updatedAt: habit.updatedAt.toISOString(),
-    deletedAt: habit.deletedAt?.toISOString() || undefined,
-    entries: habit.entries?.map((entry: any) => ({
-      ...entry,
-      date: entry.date.toISOString(),
-      createdAt: entry.createdAt.toISOString(),
-      updatedAt: entry.updatedAt.toISOString(),
-    })) || []
-  }
-}
-
-// Helper function for error responses
-function handleError(error: unknown) {
-  console.error('Error:', error)
-  
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    switch (error.code) {
-      case 'P2002':
-        return new NextResponse("A habit with this name already exists", { status: 409 })
-      case 'P2025':
-        return new NextResponse("Habit not found", { status: 404 })
-      default:
-        return new NextResponse(`Database error: ${error.code}`, { status: 500 })
-    }
-  }
-
-  return new NextResponse(
-    error instanceof Error ? error.message : "Internal Error", 
-    { status: 500 }
-  )
 }

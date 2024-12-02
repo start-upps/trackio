@@ -1,8 +1,8 @@
 // src/components/HabitList.tsx
 "use client";
 
-import { useState } from "react";
-import type { Habit, HabitStats } from "@/types/habit";
+import { useState, useCallback } from "react";
+import type { Habit, HabitStats, HabitUpdateInput } from "@/types/habit";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion } from "framer-motion";
 import { Plus, ListPlus } from "lucide-react";
@@ -17,18 +17,23 @@ interface HabitListProps {
   initialStats?: Record<string, HabitStats>;
 }
 
-function MonthlyHabitView({ habits }: { habits: Habit[] }) {
+interface MonthlyHabitViewProps {
+  habits: Habit[];
+}
+
+function MonthlyHabitView({ habits }: MonthlyHabitViewProps): JSX.Element {
   const { toggleHabit } = useOptimisticHabits();
   return <MonthlyView habits={habits} onToggleHabit={toggleHabit} />;
 }
 
-export function HabitList({ habits: initialHabits }: HabitListProps) {
-  const [habits, setHabits] = useState(initialHabits);
+export function HabitList({ habits: initialHabits }: HabitListProps): JSX.Element {
+  const [habits, setHabits] = useState<Habit[]>(initialHabits);
   const router = useRouter();
 
-  const handleDelete = async (habitId: string) => {
-    // Optimistic update
+  const handleDelete = useCallback(async (habitId: string): Promise<void> => {
     setHabits(current => current.filter(h => h.id !== habitId));
+    
+    const toastId = toast.loading("Deleting habit...");
     
     try {
       const response = await fetch(`/api/habits/${habitId}`, {
@@ -39,17 +44,16 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
         throw new Error("Failed to delete habit");
       }
       
-      toast.success("Habit deleted successfully");
+      toast.success("Habit deleted successfully", { id: toastId });
       router.refresh();
     } catch (error) {
       console.error("Error deleting habit:", error);
       setHabits(initialHabits);
-      toast.error("Failed to delete habit");
+      toast.error("Failed to delete habit", { id: toastId });
     }
-  };
+  }, [initialHabits, router]);
 
-  const handleUpdate = async (habitId: string, data: Partial<Habit>) => {
-    // Optimistic update
+  const handleUpdate = useCallback(async (habitId: string, data: Partial<HabitUpdateInput>): Promise<void> => {
     setHabits(current =>
       current.map(habit =>
         habit.id === habitId
@@ -57,6 +61,8 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
           : habit
       )
     );
+
+    const toastId = toast.loading("Updating habit...");
 
     try {
       const response = await fetch(`/api/habits/${habitId}`, {
@@ -69,14 +75,21 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
         throw new Error("Failed to update habit");
       }
 
-      toast.success("Habit updated successfully");
+      toast.success("Habit updated successfully", { id: toastId });
       router.refresh();
     } catch (error) {
       console.error("Error updating habit:", error);
       setHabits(initialHabits);
-      toast.error("Failed to update habit");
+      toast.error("Failed to update habit", { id: toastId });
     }
-  };
+  }, [initialHabits, router]);
+
+  const handleCreateHabit = useCallback(() => {
+    const element = document.getElementById('new-habit-trigger');
+    if (element) {
+      element.click();
+    }
+  }, []);
 
   if (habits.length === 0) {
     return (
@@ -103,7 +116,7 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
         <Button 
           size="lg"
           className="rounded-xl bg-gray-800 hover:bg-gray-700"
-          onClick={() => window.document.getElementById('new-habit-trigger')?.click()}
+          onClick={handleCreateHabit}
         >
           <Plus className="mr-2 h-5 w-5" />
           Create Your First Habit
@@ -130,7 +143,7 @@ export function HabitList({ habits: initialHabits }: HabitListProps) {
           <Button
             variant="ghost"
             className="text-gray-500 hover:text-gray-400"
-            onClick={() => window.document.getElementById('new-habit-trigger')?.click()}
+            onClick={handleCreateHabit}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Another Habit

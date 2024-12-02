@@ -2,7 +2,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
+import { 
   BarChart,
   Bar,
   XAxis,
@@ -16,8 +16,7 @@ import {
 } from "recharts";
 import { 
   format, 
-  startOfMonth, 
-  // endOfMonth, 
+  startOfMonth,
   eachDayOfInterval, 
   subMonths,
   getDaysInMonth,
@@ -26,7 +25,22 @@ import {
 } from "date-fns";
 import type { Habit } from "@/types/habit";
 
-function prepareMonthlyData(habit: Habit) {
+interface MonthlyDataPoint {
+  date: string;
+  completed: number;
+  month: string;
+  isToday: boolean;
+}
+
+interface CompletionDataPoint {
+  month: string;
+  completionRate: number;
+  streak: number;
+  totalDays: number;
+  completedDays: number;
+}
+
+function prepareMonthlyData(habit: Habit): MonthlyDataPoint[] {
   const endDate = new Date();
   const startDate = subMonths(endDate, 2); // Show last 3 months
 
@@ -49,15 +63,14 @@ function prepareMonthlyData(habit: Habit) {
   });
 }
 
-function prepareCompletionRateData(habit: Habit) {
-  const months = [];
+function prepareCompletionRateData(habit: Habit): CompletionDataPoint[] {
+  const months: CompletionDataPoint[] = [];
   const endDate = new Date();
   const startDate = subMonths(endDate, 5); // Show last 6 months
 
   let currentDate = startDate;
   while (currentDate <= endDate) {
     const monthStart = startOfMonth(currentDate);
-    // const monthEnd = endOfMonth(currentDate);
     const monthStr = format(monthStart, "MMM yyyy");
 
     const monthEntries = habit.entries.filter((entry) => {
@@ -66,10 +79,10 @@ function prepareCompletionRateData(habit: Habit) {
     });
 
     const daysInMonth = getDaysInMonth(currentDate);
-    const completionRate =
-      monthEntries.length > 0
-        ? (monthEntries.filter((e) => e.completed).length / daysInMonth) * 100
-        : 0;
+    const completedEntries = monthEntries.filter(e => e.completed);
+    const completionRate = monthEntries.length > 0
+      ? (completedEntries.length / daysInMonth) * 100
+      : 0;
 
     const streak = monthEntries.reduce((acc, entry, index, arr) => {
       if (!entry.completed) return acc;
@@ -89,13 +102,20 @@ function prepareCompletionRateData(habit: Habit) {
       completionRate: Math.round(completionRate),
       streak,
       totalDays: daysInMonth,
-      completedDays: monthEntries.filter(e => e.completed).length,
+      completedDays: completedEntries.length,
     });
 
     currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
   }
 
   return months;
+}
+
+function formatTooltipValue(value: number, key: string): [string, string] {
+  if (key === "completionRate") {
+    return [`${value}%`, "Completion Rate"];
+  }
+  return [`${value} days`, "Longest Streak"];
 }
 
 interface HabitChartsProps {
@@ -137,7 +157,7 @@ export function HabitCharts({ habit }: HabitChartsProps) {
                   border: "1px solid #374151",
                   borderRadius: "0.375rem",
                 }}
-                formatter={(value, name) => [
+                formatter={(value: number, _key: string) => [
                   value === 1 ? "Completed" : "Not completed",
                   "Status"
                 ]}
@@ -179,14 +199,7 @@ export function HabitCharts({ habit }: HabitChartsProps) {
                   border: "1px solid #374151",
                   borderRadius: "0.375rem",
                 }}
-                formatter={(value, name) => [
-                  name === "completionRate" 
-                    ? `${value}%` 
-                    : `${value} days`,
-                  name === "completionRate" 
-                    ? "Completion Rate" 
-                    : "Longest Streak"
-                ]}
+                formatter={formatTooltipValue}
               />
               <Legend />
               <Line
