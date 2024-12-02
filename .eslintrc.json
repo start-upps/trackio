@@ -7,46 +7,32 @@
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint"],
   "rules": {
-    "@typescript-eslint/no-unused-vars": [
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/consistent-type-imports": [
       "error",
       {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_"
-      }
-    ],
-    "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/explicit-function-return-type": [
-      "warn",
-      {
-        "allowExpressions": true,
-        "allowTypedFunctionExpressions": true,
-        "allowHigherOrderFunctions": true,
-        "allowDirectConstAssertionInArrowFunctions": true
-      }
-    ],
-    "@typescript-eslint/consistent-type-imports": [
-      "warn",
-      {
-        "prefer": "type-imports",
-        "fixStyle": "inline-type-imports"
+        "prefer": "type-imports"
       }
     ],
     "no-var": "error",
     "prefer-const": "error",
-    "no-console": [
-      "warn", 
-      {
-        "allow": ["warn", "error"]
-      }
-    ]
+    "no-console": "off"
   },
   "overrides": [
     {
-      "files": ["src/app/**/*.ts", "src/app/**/*.tsx"],
+      "files": ["src/components/**/*.tsx"],
       "rules": {
-        "no-console": "off",
-        "@typescript-eslint/explicit-function-return-type": "off"
+        "@typescript-eslint/explicit-function-return-type": ["error", {
+          "allowExpressions": true,
+          "allowTypedFunctionExpressions": true,
+          "allowHigherOrderFunctions": true
+        }],
+        "@typescript-eslint/no-unused-vars": ["error", {
+          "varsIgnorePattern": "^_",
+          "argsIgnorePattern": "^_"
+        }]
       }
     }
   ]
