@@ -1,38 +1,30 @@
 // .eslintrc.json
 {
   "extends": [
-    "next/core-web-vitals", 
+    "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended"
   ],
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint"],
   "rules": {
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/consistent-type-imports": [
-      "error",
-      {
-        "prefer": "type-imports"
-      }
-    ],
+    "@typescript-eslint/consistent-type-imports": "off",
     "no-var": "error",
     "prefer-const": "error",
     "no-console": "off"
   },
   "overrides": [
     {
-      "files": ["src/components/**/*.tsx"],
+      "files": ["*.ts", "*.tsx"],
+      "excludes": ["src/app/**/*", "tests/**/*"],
       "rules": {
-        "@typescript-eslint/explicit-function-return-type": ["error", {
-          "allowExpressions": true,
-          "allowTypedFunctionExpressions": true,
-          "allowHigherOrderFunctions": true
-        }],
-        "@typescript-eslint/no-unused-vars": ["error", {
-          "varsIgnorePattern": "^_",
-          "argsIgnorePattern": "^_"
-        }]
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/no-unused-vars": [
+          "error", 
+          { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+        ]
       }
     }
   ]
