@@ -14,20 +14,37 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    // Get all habits, including non-archived ones first, then sorted by creation date
     const habits = await db.habit.findMany({
-      where: { userId },
+      where: { 
+        userId,
+      },
       include: {
         entries: {
           orderBy: { date: "desc" },
           take: 28,
         },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [
+        { archived: 'asc' },  // Non-archived habits first
+        { createdAt: 'desc' } // Most recent habits first
+      ]
     })
 
-    return NextResponse.json(habits)
+    // Convert dates to ISO strings for serialization
+    const serializedHabits = habits.map(habit => ({
+      ...habit,
+      createdAt: habit.createdAt.toISOString(),
+      updatedAt: habit.updatedAt.toISOString(),
+      entries: habit.entries.map(entry => ({
+        ...entry,
+        date: entry.date.toISOString(),
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+      })),
+    }))
+
+    return NextResponse.json(serializedHabits)
   } catch (error) {
     console.error('Error fetching habits:', error)
     return new NextResponse("Internal Error", { status: 500 })
@@ -49,6 +66,7 @@ export async function POST(req: Request) {
       return new NextResponse("Missing required fields", { status: 400 })
     }
 
+    // Create the new habit
     const habit = await db.habit.create({
       data: {
         name: name.trim(),
@@ -56,12 +74,32 @@ export async function POST(req: Request) {
         color,
         icon,
         userId
+      },
+      include: {
+        entries: true // Include entries in the response
       }
     })
 
-    revalidatePath('/')
+    // Convert dates to ISO strings for serialization
+    const serializedHabit = {
+      ...habit,
+      createdAt: habit.createdAt.toISOString(),
+      updatedAt: habit.updatedAt.toISOString(),
+      entries: habit.entries.map(entry => ({
+        ...entry,
+        date: entry.date.toISOString(),
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+      })),
+    }
 
-    return NextResponse.json(habit)
+    // Force revalidation of the page
+    revalidatePath('/', 'page')
+
+    return NextResponse.json({
+      success: true,
+      habit: serializedHabit
+    })
   } catch (error) {
     console.error('Error creating habit:', error)
     

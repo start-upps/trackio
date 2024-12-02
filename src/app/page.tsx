@@ -13,7 +13,8 @@ export const metadata: Metadata = {
   description: "Track your daily habits",
 };
 
-export const revalidate = 60;
+// Disable caching to ensure fresh data
+export const revalidate = 0;
 
 async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]> {
   try {
@@ -22,13 +23,6 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
     const habits = await db.habit.findMany({
       where: { 
         userId,
-        entries: {
-          some: {
-            date: {
-              gte: sixMonthsAgo
-            }
-          }
-        }
       },
       include: {
         entries: {
@@ -40,12 +34,14 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
           orderBy: { date: "desc" },
         },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [
+        { archived: 'asc' },  // Non-archived habits first
+        { createdAt: 'desc' } // Most recent habits first
+      ]
     });
 
     return habits.map(habit => {
+      // Serialize dates to ISO strings
       const serializedHabit: Habit = {
         ...habit,
         createdAt: habit.createdAt.toISOString(),
@@ -58,6 +54,7 @@ async function getHabitsWithStats(userId: string): Promise<FetchHabitResponse[]>
         })),
       };
 
+      // Calculate stats for the habit
       const stats = calculateHabitStats(serializedHabit);
 
       return {
@@ -83,19 +80,42 @@ export default async function Page() {
   let error: Error | null = null;
 
   try {
+    // Fetch habits with stats
     habitsData = await getHabitsWithStats(userId);
+    
+    // Log success for debugging
+    console.log(`Successfully fetched ${habitsData.length} habits`);
   } catch (e) {
     error = e instanceof Error ? e : new Error('An unexpected error occurred');
     console.error('Error in Page:', e);
   }
 
-  const activeHabits = habitsData.filter(data => !data.habit.archived);
-  const archivedHabits = habitsData.filter(data => data.habit.archived);
+  // Separate active and archived habits
+  const activeHabits = habitsData
+    .filter(data => !data.habit.archived)
+    .sort((a, b) => new Date(b.habit.createdAt).getTime() - new Date(a.habit.createdAt).getTime());
+
+  const archivedHabits = habitsData
+    .filter(data => data.habit.archived)
+    .sort((a, b) => new Date(b.habit.createdAt).getTime() - new Date(a.habit.createdAt).getTime());
+
+  // Debug logging
+  console.log(`Active habits: ${activeHabits.length}, Archived habits: ${archivedHabits.length}`);
 
   return (
     <ClientPage 
-      activeHabits={activeHabits.map(data => data.habit)}
-      archivedHabits={archivedHabits.map(data => data.habit)}
+      activeHabits={activeHabits.map(data => ({
+        ...data.habit,
+        entries: data.habit.entries.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )
+      }))}
+      archivedHabits={archivedHabits.map(data => ({
+        ...data.habit,
+        entries: data.habit.entries.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )
+      }))}
       error={error}
     />
   );
