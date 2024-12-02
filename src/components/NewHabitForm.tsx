@@ -30,7 +30,6 @@ const initialFormState = {
 export function NewHabitForm({ onClose }: { onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
-  const router = useRouter();
 
   const resetForm = () => {
     setFormData(initialFormState);
@@ -83,11 +82,15 @@ export function NewHabitForm({ onClose }: { onClose?: () => void }) {
       
       // Update success toast
       toast.success("Habit created successfully!", {
-        id: loadingToast
+        id: loadingToast,
+        duration: 2000 // Show success for 2 seconds before refresh
       });
+
+      // Add a small delay to ensure the toast is seen
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Refresh the page data last
-      router.refresh();
+      // Force a full page refresh to ensure new data is fetched
+      window.location.href = '/';
       
     } catch (error) {
       console.error("Error creating habit:", error);
