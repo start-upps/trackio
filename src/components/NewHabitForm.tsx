@@ -1,27 +1,26 @@
 // src/components/NewHabitForm.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CreateHabitRequest } from "@/types/habit";
+import type { CreateHabitRequest, CreateHabitResponse, ApiResponse } from "@/types/habit";
 
 const COLORS = [
-  "#E040FB", // Purple
-  "#FFB300", // Amber
-  "#00BCD4", // Cyan
-  "#4CAF50", // Green
-  "#F44336", // Red
-  "#FF9800", // Orange
+  "#E040FB", "#FFB300", "#00BCD4", "#4CAF50", "#F44336", "#FF9800"
 ] as const;
 
-const ICONS = ["📝", "💪", "🎯", "📚", "🏃‍♂️", "🧘‍♂️", "💻", "🎨", "🎵", "✍️"] as const;
+const ICONS = [
+  "📝", "💪", "🎯", "📚", "🏃‍♂️", "🧘‍♂️", "💻", "🎨", "🎵", "✍️"
+] as const;
 
-const INPUT_MAX_LENGTH = 50;
-const DESCRIPTION_MAX_LENGTH = 100;
+const LIMITS = {
+  name: 50,
+  description: 100
+} as const;
 
 type FormState = {
   name: string;
@@ -44,6 +43,9 @@ const initialFormState: FormState = {
 
 interface NewHabitFormProps {
   onClose?: () => void;
+  onSuccess?: () => void;
+  isLoading?: boolean;
+  setIsLoading?: (loading: boolean) => void;
 }
 
 interface ColorButtonProps {
@@ -53,13 +55,17 @@ interface ColorButtonProps {
   onClick: () => void;
 }
 
+interface IconButtonProps extends Omit<ColorButtonProps, 'color'> {
+  icon: typeof ICONS[number];
+}
+
 function ColorButton({ color, isSelected, isDisabled, onClick }: ColorButtonProps) {
   return (
     <motion.button
       type="button"
       disabled={isDisabled}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={!isDisabled ? { scale: 1.1 } : undefined}
+      whileTap={!isDisabled ? { scale: 0.95 } : undefined}
       onClick={onClick}
       aria-label={`Select color ${color}`}
       aria-pressed={isSelected}
@@ -73,20 +79,13 @@ function ColorButton({ color, isSelected, isDisabled, onClick }: ColorButtonProp
   );
 }
 
-interface IconButtonProps {
-  icon: typeof ICONS[number];
-  isSelected: boolean;
-  isDisabled: boolean;
-  onClick: () => void;
-}
-
 function IconButton({ icon, isSelected, isDisabled, onClick }: IconButtonProps) {
   return (
     <motion.button
       type="button"
       disabled={isDisabled}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={!isDisabled ? { scale: 1.1 } : undefined}
+      whileTap={!isDisabled ? { scale: 0.95 } : undefined}
       onClick={onClick}
       aria-label={`Select icon ${icon}`}
       aria-pressed={isSelected}
@@ -102,10 +101,24 @@ function IconButton({ icon, isSelected, isDisabled, onClick }: IconButtonProps) 
   );
 }
 
-export function NewHabitForm({ onClose }: NewHabitFormProps) {
+export function NewHabitForm({ 
+  onClose, 
+  onSuccess,
+  isLoading = false,
+  setIsLoading 
+}: NewHabitFormProps) {
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [loading, setLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!isLoading) {
+      setFormData(initialFormState);
+      setErrors({});
+      setIsDirty(false);
+    }
+  }, [isLoading]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -114,16 +127,16 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
       isValid = false;
-    } else if (formData.name.trim().length > INPUT_MAX_LENGTH) {
-      newErrors.name = `Name must be less than ${INPUT_MAX_LENGTH} characters`;
+    } else if (formData.name.trim().length > LIMITS.name) {
+      newErrors.name = `Name must be less than ${LIMITS.name} characters`;
       isValid = false;
     }
 
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
       isValid = false;
-    } else if (formData.description.trim().length > DESCRIPTION_MAX_LENGTH) {
-      newErrors.description = `Description must be less than ${DESCRIPTION_MAX_LENGTH} characters`;
+    } else if (formData.description.trim().length > LIMITS.description) {
+      newErrors.description = `Description must be less than ${LIMITS.description} characters`;
       isValid = false;
     }
 
@@ -131,24 +144,14 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
     return isValid;
   };
 
-  const resetForm = () => {
-    setFormData(initialFormState);
-    setErrors({});
-    setLoading(false);
-  };
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      return;
-    }
-
-    const toastId = toast.loading("Creating habit...");
-    setLoading(true);
+    if (!validateForm() || !setIsLoading) return;
+    setIsLoading(true);
 
     try {
-      const createHabitData: CreateHabitRequest = {
+      const data: CreateHabitRequest = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         color: formData.color,
@@ -158,41 +161,32 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
       const response = await fetch("/api/habits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createHabitData)
+        body: JSON.stringify(data)
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create habit");
+      const result = (await response.json()) as ApiResponse & CreateHabitResponse;
+
+      if (!response.ok || !result.success) {
+        throw new Error(typeof result.error === 'string' ? result.error : result.error?.message || "Failed to create habit");
       }
 
-      onClose?.();
-      resetForm();
-      
-      toast.success("Habit created successfully!", {
-        id: toastId,
-        duration: 2000
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      window.location.href = '/';
+      onSuccess?.();
       
     } catch (error) {
       console.error("Error creating habit:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create habit",
-        { id: toastId }
-      );
-      setLoading(false);
+      setIsLoading(false);
+      toast.error(error instanceof Error ? error.message : "Failed to create habit");
     }
-  }
+  };
 
-  const handleInputChange = (field: keyof FormState, value: string) => {
+  const handleInputChange = (field: keyof FormState, value: string | typeof COLORS[number] | typeof ICONS[number]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     
+    setIsDirty(true);
+
     // Clear error when user starts typing
     if (errors[field as keyof FormErrors]) {
       setErrors(prev => ({
@@ -203,21 +197,24 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Preview Card */}
-      <div 
+      <motion.div 
         className="p-4 rounded-xl border border-gray-800 bg-gray-900/50"
         style={{ backgroundColor: `${formData.color}10` }}
         role="region"
         aria-label="Habit preview"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
       >
         <div className="flex items-center gap-3">
-          <div 
+          <motion.div 
             className="w-12 h-12 rounded-xl flex items-center justify-center text-xl"
             style={{ backgroundColor: formData.color }}
+            whileHover={{ scale: 1.05 }}
           >
             {formData.icon}
-          </div>
+          </motion.div>
           <div>
             <h3 className="font-medium text-white">
               {formData.name || "Habit Name"}
@@ -227,7 +224,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Form Fields */}
       <div className="space-y-4">
@@ -238,7 +235,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
           >
             Name
             <span className="text-gray-400 text-xs ml-2">
-              ({formData.name.length}/{INPUT_MAX_LENGTH})
+              ({formData.name.length}/{LIMITS.name})
             </span>
           </label>
           <input
@@ -247,8 +244,8 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
             value={formData.name}
             onChange={e => handleInputChange('name', e.target.value)}
             required
-            maxLength={INPUT_MAX_LENGTH}
-            disabled={loading}
+            maxLength={LIMITS.name}
+            disabled={isLoading}
             aria-invalid={Boolean(errors.name)}
             aria-describedby={errors.name ? "name-error" : undefined}
             className={cn(
@@ -256,7 +253,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
               "border border-gray-700/50",
               "focus:border-gray-600 focus:ring-1 focus:ring-gray-600",
               "transition-colors duration-200",
-              loading && "opacity-50 cursor-not-allowed",
+              isLoading && "opacity-50 cursor-not-allowed",
               errors.name && "border-red-500"
             )}
             placeholder="e.g., Morning Meditation"
@@ -275,7 +272,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
           >
             Description
             <span className="text-gray-400 text-xs ml-2">
-              ({formData.description.length}/{DESCRIPTION_MAX_LENGTH})
+              ({formData.description.length}/{LIMITS.description})
             </span>
           </label>
           <input
@@ -284,8 +281,8 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
             value={formData.description}
             onChange={e => handleInputChange('description', e.target.value)}
             required
-            maxLength={DESCRIPTION_MAX_LENGTH}
-            disabled={loading}
+            maxLength={LIMITS.description}
+            disabled={isLoading}
             aria-invalid={Boolean(errors.description)}
             aria-describedby={errors.description ? "description-error" : undefined}
             className={cn(
@@ -293,7 +290,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
               "border border-gray-700/50",
               "focus:border-gray-600 focus:ring-1 focus:ring-gray-600",
               "transition-colors duration-200",
-              loading && "opacity-50 cursor-not-allowed",
+              isLoading && "opacity-50 cursor-not-allowed",
               errors.description && "border-red-500"
             )}
             placeholder="e.g., Meditate for 10 minutes every morning"
@@ -315,7 +312,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
                 key={color}
                 color={color}
                 isSelected={formData.color === color}
-                isDisabled={loading}
+                isDisabled={isLoading}
                 onClick={() => handleInputChange('color', color)}
               />
             ))}
@@ -332,7 +329,7 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
                 key={icon}
                 icon={icon}
                 isSelected={formData.icon === icon}
-                isDisabled={loading}
+                isDisabled={isLoading}
                 onClick={() => handleInputChange('icon', icon)}
               />
             ))}
@@ -344,25 +341,22 @@ export function NewHabitForm({ onClose }: NewHabitFormProps) {
         <Button
           type="button"
           variant="ghost"
-          onClick={() => {
-            resetForm();
-            onClose?.();
-          }}
-          disabled={loading}
+          onClick={onClose}
+          disabled={isLoading}
           className="rounded-xl"
         >
           Cancel
         </Button>
         <Button 
           type="submit" 
-          disabled={loading}
+          disabled={isLoading || !isDirty}
           className={cn(
             "rounded-xl",
             "bg-gradient-to-r from-blue-500 to-purple-500",
             "hover:from-blue-600 hover:to-purple-600"
           )}
         >
-          {loading ? (
+          {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Creating...

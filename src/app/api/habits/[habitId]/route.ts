@@ -6,17 +6,35 @@ import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
 import { startOfMonth, subMonths } from "date-fns"
 import { calculateHabitStats } from "@/lib/stats"
+import type { 
+  Habit, 
+  HabitEntry, 
+  ApiResponse,
+  UpdateHabitRequest,
+  HabitStats 
+} from "@/types/habit"
 
 export const runtime = 'nodejs'
 
-// Helper function for consistent habit serialization
-function serializeHabit(habit: any) {
+// Response types
+type HabitResponse = ApiResponse & {
+  habit?: Habit;
+  stats?: HabitStats;
+  isDeleted?: boolean;
+}
+
+type HabitWithEntries = Prisma.HabitGetPayload<{
+  include: { entries: true }
+}>
+
+// Helper functions
+function serializeHabit(habit: HabitWithEntries): Habit {
   return {
     ...habit,
     createdAt: habit.createdAt.toISOString(),
     updatedAt: habit.updatedAt.toISOString(),
     deletedAt: habit.deletedAt?.toISOString() || undefined,
-    entries: habit.entries.map((entry: any) => ({
+    entries: habit.entries.map((entry): HabitEntry => ({
       ...entry,
       date: entry.date.toISOString(),
       createdAt: entry.createdAt.toISOString(),
@@ -25,8 +43,7 @@ function serializeHabit(habit: any) {
   }
 }
 
-// Helper function for error handling
-function handleApiError(error: unknown) {
+function handleApiError(error: unknown): NextResponse<HabitResponse> {
   console.error('API Error:', error)
   
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -67,10 +84,28 @@ function handleApiError(error: unknown) {
   }, { status: 500 })
 }
 
+async function validateHabitAccess(
+  habitId: string, 
+  userId: string,
+  isDeleted = false
+): Promise<HabitWithEntries | null> {
+  return await db.habit.findFirst({
+    where: {
+      id: habitId,
+      userId,
+      isDeleted,
+    },
+    include: {
+      entries: true
+    }
+  })
+}
+
+// Route handlers
 export async function PATCH(
   req: Request,
   { params }: { params: { habitId: string } }
-) {
+): Promise<NextResponse<HabitResponse>> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
@@ -80,14 +115,7 @@ export async function PATCH(
       }, { status: 401 })
     }
 
-    const existingHabit = await db.habit.findFirst({
-      where: {
-        id: params.habitId,
-        userId,
-        isDeleted: false,
-      },
-    })
-
+    const existingHabit = await validateHabitAccess(params.habitId, userId)
     if (!existingHabit) {
       return NextResponse.json({
         success: false,
@@ -95,12 +123,14 @@ export async function PATCH(
       }, { status: 404 })
     }
 
-    const data = await req.json()
+    const data = await req.json() as UpdateHabitRequest
     const sanitizedData = {
       ...(data.name && { name: data.name.trim() }),
       ...(data.description && { description: data.description.trim() }),
       ...(data.color && { color: data.color }),
       ...(data.icon && { icon: data.icon }),
+      isDeleted: false,
+      deletedAt: null
     }
 
     const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6))
@@ -109,7 +139,6 @@ export async function PATCH(
       where: {
         id: params.habitId,
         userId,
-        isDeleted: false,
       },
       data: sanitizedData,
       include: {
@@ -137,7 +166,7 @@ export async function PATCH(
 export async function DELETE(
   _req: Request,
   { params }: { params: { habitId: string } }
-) {
+): Promise<NextResponse<HabitResponse>> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
@@ -148,14 +177,7 @@ export async function DELETE(
     }
 
     await db.$transaction(async (tx) => {
-      const habit = await tx.habit.findFirst({
-        where: {
-          id: params.habitId,
-          userId,
-          isDeleted: false,
-        },
-      })
-
+      const habit = await validateHabitAccess(params.habitId, userId)
       if (!habit) {
         throw new Error("Habit not found")
       }
@@ -170,6 +192,11 @@ export async function DELETE(
           deletedAt: new Date(),
         },
       })
+
+      await tx.habitEntry.updateMany({
+        where: { habitId: params.habitId },
+        data: { completed: false }
+      })
     })
 
     revalidatePath('/')
@@ -182,7 +209,7 @@ export async function DELETE(
 export async function GET(
   _req: Request,
   { params }: { params: { habitId: string } }
-) {
+): Promise<NextResponse<HabitResponse>> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
@@ -193,16 +220,17 @@ export async function GET(
     }
 
     const sixMonthsAgo = startOfMonth(subMonths(new Date(), 6))
-
     const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
         userId,
-        isDeleted: false,
       },
       include: {
         entries: {
-          where: { date: { gte: sixMonthsAgo } },
+          where: {
+            date: { gte: sixMonthsAgo },
+            completed: true
+          },
           orderBy: { date: 'desc' },
         },
       },
@@ -221,7 +249,8 @@ export async function GET(
     return NextResponse.json({
       success: true,
       habit: serializedHabit,
-      stats
+      stats,
+      isDeleted: habit.isDeleted
     })
   } catch (error) {
     return handleApiError(error)
@@ -231,7 +260,7 @@ export async function GET(
 export async function PUT(
   _req: Request,
   { params }: { params: { habitId: string } }
-) {
+): Promise<NextResponse<HabitResponse>> {
   try {
     const userId = await verifyAuth()
     if (!userId) {
@@ -241,14 +270,7 @@ export async function PUT(
       }, { status: 401 })
     }
 
-    const habit = await db.habit.findFirst({
-      where: {
-        id: params.habitId,
-        userId,
-        isDeleted: true,
-      },
-    })
-
+    const habit = await validateHabitAccess(params.habitId, userId, true)
     if (!habit) {
       return NextResponse.json({
         success: false,
@@ -256,18 +278,20 @@ export async function PUT(
       }, { status: 404 })
     }
 
-    const restoredHabit = await db.habit.update({
-      where: {
-        id: params.habitId,
-        userId,
-      },
-      data: {
-        isDeleted: false,
-        deletedAt: null,
-      },
-      include: {
-        entries: true,
-      },
+    const restoredHabit = await db.$transaction(async (tx) => {
+      return await tx.habit.update({
+        where: {
+          id: params.habitId,
+          userId,
+        },
+        data: {
+          isDeleted: false,
+          deletedAt: null,
+        },
+        include: {
+          entries: true,
+        },
+      })
     })
 
     const serializedHabit = serializeHabit(restoredHabit)

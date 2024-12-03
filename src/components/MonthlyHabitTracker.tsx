@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Pencil, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { 
@@ -12,12 +12,21 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Habit } from "@/types/habit";
 import { motion } from "framer-motion";
 
 interface MonthlyViewProps {
   habits: Habit[];
   onToggleHabit: (habitId: string, date: string) => Promise<void>;
+  onEdit?: (habit: Habit) => void;
+  onDelete?: (id: string) => Promise<void>;
   className?: string;
   isLoading?: boolean;
 }
@@ -84,7 +93,9 @@ function DayButton({ day, habit, isCompleted, isFuture, onToggle, isLoading }: D
 
 export default function MonthlyView({ 
   habits, 
-  onToggleHabit, 
+  onToggleHabit,
+  onEdit,
+  onDelete,
   className,
   isLoading 
 }: MonthlyViewProps) {
@@ -186,22 +197,56 @@ export default function MonthlyView({
             {habits.map((habit) => (
               <tr 
                 key={habit.id} 
-                className="border-b border-gray-800"
+                className="border-b border-gray-800 group"
                 role="row"
               >
                 <td className="p-3 border-r border-gray-800 sticky left-0 bg-gray-900 z-10">
-                  <div className="flex items-center gap-2">
-                    <motion.span 
-                      whileHover={{ scale: 1.1 }}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center text-sm"
-                      style={{ backgroundColor: habit.color }}
-                    >
-                      {habit.icon}
-                    </motion.span>
-                    <div>
-                      <div className="font-medium">{habit.name}</div>
-                      <div className="text-sm text-gray-500">{habit.description}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <motion.span 
+                        whileHover={{ scale: 1.1 }}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center text-sm"
+                        style={{ backgroundColor: habit.color }}
+                      >
+                        {habit.icon}
+                      </motion.span>
+                      <div>
+                        <div className="font-medium">{habit.name}</div>
+                        <div className="text-sm text-gray-500">{habit.description}</div>
+                      </div>
                     </div>
+                    {(onEdit || onDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {onEdit && (
+                            <DropdownMenuItem onClick={() => onEdit(habit)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {onEdit && onDelete && <DropdownMenuSeparator />}
+                          {onDelete && (
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(habit.id)}
+                              className="text-red-400"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 </td>
                 {daysInMonth.map((day) => {

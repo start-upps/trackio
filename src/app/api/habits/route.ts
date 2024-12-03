@@ -5,12 +5,15 @@ import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
 import { startOfMonth, subMonths } from "date-fns"
+import { calculateHabitStats } from "@/lib/stats"
 import type { 
   Habit, 
   HabitEntry, 
   CreateHabitRequest, 
   ApiResponse,
-  HabitsPaginatedResponse
+  HabitsPaginatedResponse,
+  HabitQueryParams,
+  HabitStats
 } from "@/types/habit"
 
 export const runtime = 'nodejs'
@@ -18,6 +21,8 @@ export const runtime = 'nodejs'
 type HabitWithEntries = Prisma.HabitGetPayload<{
   include: { entries: true }
 }>
+
+type SortableFields = 'name' | 'createdAt' | 'updatedAt'
 
 function serializeHabit(habit: HabitWithEntries): Habit {
   return {
@@ -85,6 +90,43 @@ function handleApiError(error: unknown): NextResponse<ApiResponse> {
   }, { status: 500 })
 }
 
+function parseQueryParams(searchParams: URLSearchParams): Required<HabitQueryParams> {
+  return {
+    page: Math.max(1, parseInt(searchParams.get('page') || '1')),
+    limit: Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10'))),
+    showDeleted: searchParams.get('showDeleted') === 'true',
+    startDate: searchParams.get('startDate') || startOfMonth(subMonths(new Date(), 6)).toISOString(),
+    endDate: searchParams.get('endDate') || new Date().toISOString(),
+    search: searchParams.get('search') || '',
+    sortBy: (searchParams.get('sortBy') as SortableFields) || 'createdAt',
+    sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
+  }
+}
+
+function buildWhereClause(userId: string, params: Required<HabitQueryParams>): Prisma.HabitWhereInput {
+  const startDate = new Date(params.startDate)
+  const endDate = new Date(params.endDate)
+
+  return {
+    userId,
+    isDeleted: params.showDeleted ? undefined : false,
+    entries: {
+      some: {
+        date: { 
+          gte: startDate,
+          lte: endDate
+        }
+      }
+    },
+    ...(params.search && {
+      OR: [
+        { name: { contains: params.search, mode: Prisma.QueryMode.insensitive } },
+        { description: { contains: params.search, mode: Prisma.QueryMode.insensitive } }
+      ]
+    })
+  }
+}
+
 export async function GET(
   request: Request
 ): Promise<NextResponse<ApiResponse | HabitsPaginatedResponse>> {
@@ -98,51 +140,48 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const showDeleted = searchParams.get('showDeleted') === 'true'
-    const startDate = searchParams.get('startDate') 
-      ? new Date(searchParams.get('startDate')!)
-      : startOfMonth(subMonths(new Date(), 6))
+    const params = parseQueryParams(searchParams)
+    const where = buildWhereClause(userId, params)
 
-    const where = {
-      userId,
-      isDeleted: showDeleted ? undefined : false,
-      entries: {
-        some: {
-          date: { gte: startDate }
-        }
-      }
-    }
-
-    const [total, habits] = await db.$transaction([
+    const [total, habits, activeCount, deletedCount] = await db.$transaction([
       db.habit.count({ where }),
       db.habit.findMany({
         where,
         include: {
           entries: {
-            where: { date: { gte: startDate } },
+            where: { 
+              date: { 
+                gte: new Date(params.startDate),
+                lte: new Date(params.endDate)
+              },
+              completed: true
+            },
             orderBy: { date: "desc" }
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit
-      })
-    ])
-
-    const [activeCount, deletedCount] = await db.$transaction([
+        orderBy: { [params.sortBy]: params.sortOrder },
+        skip: (params.page - 1) * params.limit,
+        take: params.limit
+      }),
       db.habit.count({ where: { ...where, isDeleted: false } }),
       db.habit.count({ where: { ...where, isDeleted: true } })
     ])
 
+    const serializedHabits = habits.map(habit => {
+      const serialized = serializeHabit(habit)
+      return {
+        ...serialized,
+        stats: calculateHabitStats(serialized)
+      }
+    })
+
     return NextResponse.json({
       success: true,
-      data: habits.map(serializeHabit),
+      data: serializedHabits,
       total,
-      page,
-      pageSize: limit,
-      totalPages: Math.ceil(total / limit),
+      page: params.page,
+      pageSize: params.limit,
+      totalPages: Math.ceil(total / params.limit),
       activeHabits: activeCount,
       deletedHabits: deletedCount
     })
@@ -177,6 +216,22 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       }, { status: 400 })
     }
 
+    // Check for duplicate habit names for this user
+    const existingHabit = await db.habit.findFirst({
+      where: {
+        userId,
+        name: name.trim(),
+        isDeleted: false
+      }
+    })
+
+    if (existingHabit) {
+      return NextResponse.json({
+        success: false,
+        error: { message: "A habit with this name already exists" }
+      }, { status: 409 })
+    }
+
     const habit = await db.habit.create({
       data: {
         name: name.trim(),
@@ -191,11 +246,13 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       }
     })
 
+    const serializedHabit = serializeHabit(habit)
+
     revalidatePath('/')
 
     return NextResponse.json({
       success: true,
-      habit: serializeHabit(habit)
+      habit: serializedHabit
     })
   } catch (error) {
     return handleApiError(error)
