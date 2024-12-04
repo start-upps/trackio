@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { isSameDay, startOfDay } from "date-fns"
+import { isSameDay } from "date-fns"
 
 export async function POST(
   req: Request,
@@ -11,15 +11,15 @@ export async function POST(
 ) {
   try {
     const userId = await verifyAuth()
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
-    }
+    if (!userId) return new NextResponse("Unauthorized", { status: 401 })
 
     const { date } = await req.json()
-    const targetDate = startOfDay(new Date(date))
-    const today = startOfDay(new Date())
+    const targetDate = new Date(date)
+    const today = new Date()
+    
+    targetDate.setHours(12, 0, 0, 0)
+    today.setHours(12, 0, 0, 0)
 
-    // Check if the date is today
     if (!isSameDay(targetDate, today)) {
       return new NextResponse("Can only mark habits for today", { 
         status: 400,
@@ -35,9 +35,7 @@ export async function POST(
       }
     })
 
-    if (!habit) {
-      return new NextResponse("Habit not found", { status: 404 })
-    }
+    if (!habit) return new NextResponse("Habit not found", { status: 404 })
 
     const existingEntry = await db.habitEntry.findUnique({
       where: {
@@ -52,9 +50,7 @@ export async function POST(
 
     if (existingEntry) {
       await db.habitEntry.delete({
-        where: {
-          id: existingEntry.id,
-        },
+        where: { id: existingEntry.id }
       })
       entry = null
     } else {

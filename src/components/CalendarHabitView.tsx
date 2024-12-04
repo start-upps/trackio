@@ -9,7 +9,6 @@ import {
   addWeeks,
   subWeeks,
   isSameDay,
-  startOfDay
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,12 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface CalendarViewProps {
   habits: Habit[];
@@ -36,12 +29,7 @@ interface CalendarViewProps {
   onEdit?: (habitId: string) => void;
 }
 
-export default function CalendarView({ 
-  habits, 
-  onToggleHabit,
-  onDelete,
-  onEdit
-}: CalendarViewProps) {
+export default function CalendarView({ habits, onToggleHabit, onDelete, onEdit }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const days = eachDayOfInterval({
@@ -51,7 +39,8 @@ export default function CalendarView({
 
   const handleToggle = async (habitId: string, date: Date) => {
     if (isToday(date)) {
-      const today = startOfDay(new Date());
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
       await onToggleHabit(habitId, today.toISOString());
     }
   };
@@ -90,9 +79,7 @@ export default function CalendarView({
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th className="p-4 border-b border-r border-gray-800 text-left w-[200px]">
-                Habit
-              </th>
+              <th className="p-4 border-b border-r border-gray-800 text-left w-[200px]">Habit</th>
               {days.map(day => (
                 <th 
                   key={day.toISOString()}
