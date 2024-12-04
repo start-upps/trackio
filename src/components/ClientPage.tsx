@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { Habit } from "@/types/habit";
+import type { Habit, HabitUpdateInput } from "@/types/habit";
 import NewHabitButton from "./NewHabitButton";
 import { SignOutButton } from "./SignOutButton";
 import { Suspense } from "react";
@@ -42,11 +42,57 @@ function MonthlyViewWithOptimistic({ habits }: { habits: Habit[] }) {
     }
   }, [router]);
 
+  const handleDelete = useCallback(async (habitId: string) => {
+    const toastId = toast.loading("Deleting habit...");
+
+    try {
+      const response = await fetch(`/api/habits/${habitId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete habit");
+      }
+
+      toast.success("Habit deleted successfully", { id: toastId });
+      router.refresh();
+    } catch (error) {
+      console.error("Error deleting habit:", error);
+      toast.error("Failed to delete habit", { id: toastId });
+    }
+  }, [router]);
+
+  const handleUpdate = useCallback(async (habitId: string, data: Partial<HabitUpdateInput>) => {
+    const toastId = toast.loading("Updating habit...");
+
+    try {
+      const response = await fetch(`/api/habits/${habitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update habit");
+      }
+
+      const result = await response.json();
+      
+      toast.success("Habit updated successfully", { id: toastId });
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating habit:", error);
+      toast.error("Failed to update habit", { id: toastId });
+    }
+  }, [router]);
+
   return (
     <OptimisticProvider habits={habits}>
       <MonthlyView 
         habits={habits}
         onToggleHabit={handleToggleHabit}
+        onDelete={handleDelete}
+        onUpdate={handleUpdate}
       />
     </OptimisticProvider>
   );
