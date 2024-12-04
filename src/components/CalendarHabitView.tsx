@@ -9,8 +9,7 @@ import {
   addWeeks,
   subWeeks,
   isSameDay,
-  isBefore,
-  startOfDay
+  startOfToday
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,6 +43,7 @@ export default function CalendarView({
   onEdit
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const today = startOfToday();
   
   const days = eachDayOfInterval({
     start: startOfWeek(currentDate, { weekStartsOn: 1 }), // Start from Monday
@@ -51,6 +51,13 @@ export default function CalendarView({
   });
 
   const weekRange = `${format(days[0], 'MMMM d')} - ${format(days[days.length - 1], 'MMMM d, yyyy')}`;
+
+  const handleToggle = async (habitId: string, date: Date) => {
+    const todayDate = startOfToday();
+    if (isSameDay(date, todayDate)) {
+      await onToggleHabit(habitId, todayDate.toISOString());
+    }
+  };
 
   return (
     <div className="w-full rounded-xl overflow-hidden">
@@ -153,11 +160,10 @@ export default function CalendarView({
                   </div>
                 </td>
                 {days.map(day => {
-                  const dayIsToday = isToday(day);
+                  const dayIsToday = isSameDay(day, today);
                   const isCompleted = habit.entries.some(
                     entry => isSameDay(new Date(entry.date), day) && entry.completed
                   );
-                  const isPast = isBefore(startOfDay(day), startOfDay(new Date()));
 
                   return (
                     <td
@@ -171,13 +177,14 @@ export default function CalendarView({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
-                              onClick={() => dayIsToday && onToggleHabit(habit.id, day.toISOString())}
+                              onClick={() => handleToggle(habit.id, day)}
                               disabled={!dayIsToday}
                               className={cn(
                                 "w-full h-12 flex items-center justify-center",
                                 "transition-all duration-200",
                                 !dayIsToday && "opacity-50"
                               )}
+                              aria-label={dayIsToday ? "Mark today's habit" : "Can only mark today's habit"}
                             >
                               {isCompleted ? (
                                 <div
@@ -201,7 +208,7 @@ export default function CalendarView({
                             {dayIsToday ? (
                               isCompleted ? "Unmark today's habit" : "Mark today's habit"
                             ) : (
-                              isPast ? "Cannot mark past days" : "Cannot mark future days"
+                              "Can only mark today's habit"
                             )}
                           </TooltipContent>
                         </Tooltip>
