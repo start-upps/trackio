@@ -1,6 +1,6 @@
 // src/components/CalendarHabitView.tsx
 import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CalendarViewProps {
   habits: Habit[];
@@ -73,7 +79,10 @@ export default function CalendarView({
               {days.map(day => (
                 <th 
                   key={day.toISOString()}
-                  className="p-2 border-b border-r border-gray-800 text-center min-w-[40px]"
+                  className={cn(
+                    "p-2 border-b border-r border-gray-800 text-center min-w-[40px]",
+                    isToday(day) && "bg-gray-800/50"
+                  )}
                 >
                   <div className="text-sm font-medium">{format(day, 'd')}</div>
                   <div className="text-xs text-gray-500">{format(day, 'EEE')}</div>
@@ -133,6 +142,7 @@ export default function CalendarView({
                   </div>
                 </td>
                 {days.map(day => {
+                  const dayIsToday = isToday(day);
                   const isCompleted = habit.entries.some(
                     entry => format(new Date(entry.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
                   );
@@ -140,26 +150,50 @@ export default function CalendarView({
                   return (
                     <td
                       key={day.toISOString()}
-                      className="border-r border-gray-800"
+                      className={cn(
+                        "border-r border-gray-800",
+                        dayIsToday && "bg-gray-800/50"
+                      )}
                     >
-                      <button
-                        onClick={() => onToggleHabit(habit.id, day.toISOString())}
-                        className="w-full h-12 flex items-center justify-center transition-opacity"
-                      >
-                        {isCompleted ? (
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-                            style={{ backgroundColor: habit.color }}
-                          >
-                            ✓
-                          </div>
-                        ) : (
-                          <div
-                            className="w-6 h-6 rounded-full border-2 opacity-25 hover:opacity-50"
-                            style={{ borderColor: habit.color }}
-                          />
-                        )}
-                      </button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => dayIsToday && onToggleHabit(habit.id, day.toISOString())}
+                              disabled={!dayIsToday}
+                              className={cn(
+                                "w-full h-12 flex items-center justify-center",
+                                "transition-all duration-200",
+                                !dayIsToday && "cursor-not-allowed opacity-50"
+                              )}
+                            >
+                              {isCompleted ? (
+                                <div
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                                  style={{ backgroundColor: habit.color }}
+                                >
+                                  ✓
+                                </div>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    "w-6 h-6 rounded-full border-2",
+                                    dayIsToday ? "opacity-25 hover:opacity-50" : "opacity-25"
+                                  )}
+                                  style={{ borderColor: habit.color }}
+                                />
+                              )}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {dayIsToday ? (
+                              isCompleted ? "Unmark today's habit" : "Mark today's habit"
+                            ) : (
+                              "Can only mark today's habit"
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </td>
                   );
                 })}
