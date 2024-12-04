@@ -1,10 +1,10 @@
 // src/components/CalendarHabitView.tsx
 import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Habit, HabitUpdateInput } from '@/types/habit';
+import type { Habit } from '@/types/habit';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,14 +17,14 @@ interface CalendarViewProps {
   habits: Habit[];
   onToggleHabit: (habitId: string, date: string) => Promise<void>;
   onDelete?: (habitId: string) => Promise<void>;
-  onUpdate?: (habitId: string, data: Partial<HabitUpdateInput>) => Promise<void>;
+  onEdit?: (habitId: string) => void;
 }
 
 export default function CalendarView({ 
   habits, 
   onToggleHabit,
   onDelete,
-  onUpdate 
+  onEdit
 }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
@@ -35,7 +35,6 @@ export default function CalendarView({
 
   return (
     <div className="w-full rounded-xl overflow-hidden">
-      {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">
           {format(currentMonth, 'MMMM yyyy')}
@@ -44,7 +43,7 @@ export default function CalendarView({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}
+            onClick={() => setCurrentMonth(prev => new Date(prev.setMonth(prev.getMonth() - 1)))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -57,14 +56,13 @@ export default function CalendarView({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
+            onClick={() => setCurrentMonth(prev => new Date(prev.setMonth(prev.getMonth() + 1)))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Calendar Grid */}
       <div className="bg-gray-900/50 rounded-lg border border-gray-800">
         <table className="w-full border-collapse">
           <thead>
@@ -112,8 +110,8 @@ export default function CalendarView({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {onUpdate && (
-                          <DropdownMenuItem onClick={() => onUpdate(habit.id, habit)}>
+                        {onEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(habit.id)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
