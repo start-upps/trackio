@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { isBefore, startOfDay, isToday, format } from "date-fns"
+import { startOfDay, isToday, isSameDay } from "date-fns"
 
 export async function POST(
   req: Request,
@@ -16,28 +16,21 @@ export async function POST(
     }
 
     const { date } = await req.json()
-    const targetDate = new Date(date)
-    const now = new Date()
+    const targetDate = startOfDay(new Date(date))
+    const today = startOfDay(new Date())
 
-    // Only allow marking habits for today
-    if (!isToday(targetDate)) {
-      return new NextResponse(
-        isBefore(startOfDay(targetDate), startOfDay(now))
-          ? "Cannot mark habits for past dates"
-          : "Cannot mark habits for future dates", 
-        { 
-          status: 400,
-          statusText: "Only today's habits can be marked"
-        }
-      )
+    if (!isSameDay(targetDate, today)) {
+      return new NextResponse("Can only mark habits for today", { 
+        status: 400,
+        statusText: "Only today's habits can be marked"
+      })
     }
 
-    // Verify habit belongs to user
     const habit = await db.habit.findFirst({
       where: {
         id: params.habitId,
         userId,
-        isDeleted: false, // Only allow marking non-deleted habits
+        isDeleted: false,
       },
       include: {
         entries: {
@@ -52,7 +45,6 @@ export async function POST(
       return new NextResponse("Habit not found", { status: 404 })
     }
 
-    // Find existing entry for today
     const existingEntry = await db.habitEntry.findUnique({
       where: {
         habitId_date: {
@@ -65,15 +57,13 @@ export async function POST(
     let entry;
 
     if (existingEntry) {
-      // If entry exists, delete it (toggle off)
       await db.habitEntry.delete({
         where: {
           id: existingEntry.id,
         },
       })
-      entry = null;
+      entry = null
     } else {
-      // If no entry exists, create one (toggle on)
       entry = await db.habitEntry.create({
         data: {
           habitId: params.habitId,
@@ -88,8 +78,7 @@ export async function POST(
     return NextResponse.json({ 
       success: true,
       entry,
-      message: entry ? "Habit marked as complete" : "Habit completion removed",
-      date: format(targetDate, 'yyyy-MM-dd')
+      message: entry ? "Habit marked as complete" : "Habit completion removed"
     })
   } catch (error) {
     console.error('Error toggling habit entry:', error)
@@ -108,12 +97,10 @@ export async function POST(
   }
 }
 
-// Response types with more detailed information
 export interface ToggleHabitResponse {
   success: boolean;
   entry: HabitEntry | null;
   message: string;
-  date: string;
 }
 
 export interface HabitEntry {
