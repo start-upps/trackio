@@ -7,7 +7,10 @@ import {
   eachDayOfInterval, 
   isToday,
   addWeeks,
-  subWeeks
+  subWeeks,
+  isSameDay,
+  isBefore,
+  startOfDay
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,18 +45,17 @@ export default function CalendarView({
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // Get current week's days
   const days = eachDayOfInterval({
     start: startOfWeek(currentDate, { weekStartsOn: 1 }), // Start from Monday
     end: endOfWeek(currentDate, { weekStartsOn: 1 }) // End on Sunday
   });
 
+  const weekRange = `${format(days[0], 'MMMM d')} - ${format(days[days.length - 1], 'MMMM d, yyyy')}`;
+
   return (
     <div className="w-full rounded-xl overflow-hidden">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">
-          {format(days[0], 'MMMM d')} - {format(days[6], 'MMMM d, yyyy')}
-        </h2>
+        <h2 className="text-xl font-semibold">{weekRange}</h2>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -89,7 +91,7 @@ export default function CalendarView({
                 <th 
                   key={day.toISOString()}
                   className={cn(
-                    "p-2 border-b border-r border-gray-800 text-center min-w-[40px]",
+                    "p-2 border-b border-r border-gray-800 text-center",
                     isToday(day) && "bg-gray-800/50"
                   )}
                 >
@@ -153,8 +155,9 @@ export default function CalendarView({
                 {days.map(day => {
                   const dayIsToday = isToday(day);
                   const isCompleted = habit.entries.some(
-                    entry => format(new Date(entry.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
+                    entry => isSameDay(new Date(entry.date), day) && entry.completed
                   );
+                  const isPast = isBefore(startOfDay(day), startOfDay(new Date()));
 
                   return (
                     <td
@@ -173,7 +176,7 @@ export default function CalendarView({
                               className={cn(
                                 "w-full h-12 flex items-center justify-center",
                                 "transition-all duration-200",
-                                !dayIsToday && "cursor-not-allowed opacity-50"
+                                !dayIsToday && "opacity-50"
                               )}
                             >
                               {isCompleted ? (
@@ -187,7 +190,7 @@ export default function CalendarView({
                                 <div
                                   className={cn(
                                     "w-6 h-6 rounded-full border-2",
-                                    dayIsToday ? "opacity-25 hover:opacity-50" : "opacity-25"
+                                    dayIsToday ? "opacity-100" : "opacity-25"
                                   )}
                                   style={{ borderColor: habit.color }}
                                 />
@@ -198,7 +201,7 @@ export default function CalendarView({
                             {dayIsToday ? (
                               isCompleted ? "Unmark today's habit" : "Mark today's habit"
                             ) : (
-                              "Can only mark today's habit"
+                              isPast ? "Cannot mark past days" : "Cannot mark future days"
                             )}
                           </TooltipContent>
                         </Tooltip>
