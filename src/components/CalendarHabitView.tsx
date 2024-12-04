@@ -1,6 +1,14 @@
 // src/components/CalendarHabitView.tsx
 import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
+import { 
+  format, 
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval, 
+  isToday,
+  addWeeks,
+  subWeeks
+} from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -32,37 +40,38 @@ export default function CalendarView({
   onDelete,
   onEdit
 }: CalendarViewProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
   
+  // Get current week's days
   const days = eachDayOfInterval({
-    start: startOfMonth(currentMonth),
-    end: endOfMonth(currentMonth)
+    start: startOfWeek(currentDate, { weekStartsOn: 1 }), // Start from Monday
+    end: endOfWeek(currentDate, { weekStartsOn: 1 }) // End on Sunday
   });
 
   return (
     <div className="w-full rounded-xl overflow-hidden">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">
-          {format(currentMonth, 'MMMM yyyy')}
+          {format(days[0], 'MMMM d')} - {format(days[6], 'MMMM d, yyyy')}
         </h2>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCurrentMonth(prev => new Date(prev.setMonth(prev.getMonth() - 1)))}
+            onClick={() => setCurrentDate(prev => subWeeks(prev, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
-            onClick={() => setCurrentMonth(new Date())}
+            onClick={() => setCurrentDate(new Date())}
           >
             Today
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCurrentMonth(prev => new Date(prev.setMonth(prev.getMonth() + 1)))}
+            onClick={() => setCurrentDate(prev => addWeeks(prev, 1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
