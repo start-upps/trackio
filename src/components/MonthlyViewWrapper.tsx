@@ -2,7 +2,7 @@
 "use client";
 
 import { OptimisticProvider } from "./providers/OptimisticProvider";
-import MonthlyView from "./MonthlyHabitTracker";
+import MonthlyView from "./CalendarHabitView";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import type { Habit } from "@/types/habit";
 

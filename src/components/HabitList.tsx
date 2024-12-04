@@ -5,11 +5,10 @@ import { useState, useCallback } from "react";
 import type { Habit, HabitStats, HabitUpdateInput } from "@/types/habit";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { motion } from "framer-motion";
-import { Plus, ListPlus, Settings, Grid, List } from "lucide-react";
+import { Plus, ListPlus, CalendarDays, Grid, List } from "lucide-react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import MonthlyView from "./MonthlyHabitTracker";
 import { useOptimisticHabits } from "./providers/OptimisticProvider";
 import { HabitRow } from "./HabitRow";
 import {
@@ -18,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import CalendarView from "./CalendarHabitView";
 
 interface HabitListProps {
   habits: Habit[];
@@ -26,11 +26,20 @@ interface HabitListProps {
   onLimitChange?: (limit: number) => void;
 }
 
-type ViewMode = "grid" | "list";
+type ViewMode = "grid" | "list" | "calendar";
 
-function MonthlyHabitView({ habits }: { habits: Habit[] }): JSX.Element {
+interface ViewComponentProps {
+  habits: Habit[];
+}
+
+function GridView({ habits }: ViewComponentProps): JSX.Element {
   const { toggleHabit } = useOptimisticHabits();
-  return <MonthlyView habits={habits} onToggleHabit={toggleHabit} />;
+  return <CalendarView habits={habits} onToggleHabit={toggleHabit} />;
+}
+
+function CalendarViewComponent({ habits }: ViewComponentProps): JSX.Element {
+  const { toggleHabit } = useOptimisticHabits();
+  return <CalendarView habits={habits} onToggleHabit={toggleHabit} />;
 }
 
 export function HabitList({ 
@@ -41,7 +50,7 @@ export function HabitList({
   const [habits, setHabits] = useState<Habit[]>(initialHabits);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const router = useRouter();
   const { toggleHabit } = useOptimisticHabits();
 
@@ -211,11 +220,21 @@ export function HabitList({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2">
-                {viewMode === "grid" ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                {viewMode === "calendar" ? (
+                  <CalendarDays className="h-4 w-4" />
+                ) : viewMode === "grid" ? (
+                  <Grid className="h-4 w-4" />
+                ) : (
+                  <List className="h-4 w-4" />
+                )}
                 View
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewMode("calendar")}>
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Calendar View
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setViewMode("grid")}>
                 <Grid className="mr-2 h-4 w-4" />
                 Grid View
@@ -229,8 +248,10 @@ export function HabitList({
         </div>
 
         {/* Habits Display */}
-        {viewMode === "grid" ? (
-          <MonthlyHabitView habits={habits} />
+        {viewMode === "calendar" ? (
+          <CalendarViewComponent habits={habits} />
+        ) : viewMode === "grid" ? (
+          <GridView habits={habits} />
         ) : (
           <div className="space-y-4">
             {habits.map(habit => (

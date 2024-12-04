@@ -7,7 +7,7 @@ import NewHabitButton from "./NewHabitButton";
 import { SignOutButton } from "./SignOutButton";
 import { Suspense } from "react";
 import Loading from "@/app/loading";
-import MonthlyView from "./MonthlyHabitTracker";
+import MonthlyView from "./CalendarHabitView";
 import { OptimisticProvider } from "./providers/OptimisticProvider";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
