@@ -9,7 +9,7 @@ import {
   addWeeks,
   subWeeks,
   isSameDay,
-  startOfToday
+  startOfDay
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,26 +43,25 @@ export default function CalendarView({
   onEdit
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const today = startOfToday();
   
   const days = eachDayOfInterval({
-    start: startOfWeek(currentDate, { weekStartsOn: 1 }), // Start from Monday
-    end: endOfWeek(currentDate, { weekStartsOn: 1 }) // End on Sunday
+    start: startOfWeek(currentDate, { weekStartsOn: 1 }),
+    end: endOfWeek(currentDate, { weekStartsOn: 1 })
   });
 
-  const weekRange = `${format(days[0], 'MMMM d')} - ${format(days[days.length - 1], 'MMMM d, yyyy')}`;
-
   const handleToggle = async (habitId: string, date: Date) => {
-    const todayDate = startOfToday();
-    if (isSameDay(date, todayDate)) {
-      await onToggleHabit(habitId, todayDate.toISOString());
+    if (isToday(date)) {
+      const today = startOfDay(new Date());
+      await onToggleHabit(habitId, today.toISOString());
     }
   };
 
   return (
     <div className="w-full rounded-xl overflow-hidden">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">{weekRange}</h2>
+        <h2 className="text-xl font-semibold">
+          {format(days[0], 'MMMM d')} - {format(days[days.length - 1], 'MMMM d, yyyy')}
+        </h2>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -98,7 +97,7 @@ export default function CalendarView({
                 <th 
                   key={day.toISOString()}
                   className={cn(
-                    "p-2 border-b border-r border-gray-800 text-center",
+                    "p-2 border-b border-r border-gray-800 text-center min-w-[40px]",
                     isToday(day) && "bg-gray-800/50"
                   )}
                 >
@@ -160,9 +159,9 @@ export default function CalendarView({
                   </div>
                 </td>
                 {days.map(day => {
-                  const dayIsToday = isSameDay(day, today);
-                  const isCompleted = habit.entries.some(
-                    entry => isSameDay(new Date(entry.date), day) && entry.completed
+                  const dayIsToday = isToday(day);
+                  const isCompleted = habit.entries.some(entry => 
+                    isSameDay(new Date(entry.date), day) && entry.completed
                   );
 
                   return (
@@ -173,46 +172,32 @@ export default function CalendarView({
                         dayIsToday && "bg-gray-800/50"
                       )}
                     >
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => handleToggle(habit.id, day)}
-                              disabled={!dayIsToday}
-                              className={cn(
-                                "w-full h-12 flex items-center justify-center",
-                                "transition-all duration-200",
-                                !dayIsToday && "opacity-50"
-                              )}
-                              aria-label={dayIsToday ? "Mark today's habit" : "Can only mark today's habit"}
-                            >
-                              {isCompleted ? (
-                                <div
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-white"
-                                  style={{ backgroundColor: habit.color }}
-                                >
-                                  ✓
-                                </div>
-                              ) : (
-                                <div
-                                  className={cn(
-                                    "w-6 h-6 rounded-full border-2",
-                                    dayIsToday ? "opacity-100" : "opacity-25"
-                                  )}
-                                  style={{ borderColor: habit.color }}
-                                />
-                              )}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {dayIsToday ? (
-                              isCompleted ? "Unmark today's habit" : "Mark today's habit"
-                            ) : (
-                              "Can only mark today's habit"
+                      <button
+                        onClick={() => handleToggle(habit.id, day)}
+                        disabled={!dayIsToday}
+                        className={cn(
+                          "w-full h-12 flex items-center justify-center",
+                          "transition-all duration-200",
+                          !dayIsToday && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        {isCompleted ? (
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                            style={{ backgroundColor: habit.color }}
+                          >
+                            ✓
+                          </div>
+                        ) : (
+                          <div
+                            className={cn(
+                              "w-6 h-6 rounded-full border-2",
+                              dayIsToday ? "opacity-100 hover:opacity-75" : "opacity-25"
                             )}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                            style={{ borderColor: habit.color }}
+                          />
+                        )}
+                      </button>
                     </td>
                   );
                 })}

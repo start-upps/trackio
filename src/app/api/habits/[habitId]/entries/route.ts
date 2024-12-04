@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { startOfDay, isToday, isSameDay } from "date-fns"
+import { isSameDay, startOfDay } from "date-fns"
 
 export async function POST(
   req: Request,
@@ -19,6 +19,7 @@ export async function POST(
     const targetDate = startOfDay(new Date(date))
     const today = startOfDay(new Date())
 
+    // Check if the date is today
     if (!isSameDay(targetDate, today)) {
       return new NextResponse("Can only mark habits for today", { 
         status: 400,
@@ -31,13 +32,6 @@ export async function POST(
         id: params.habitId,
         userId,
         isDeleted: false,
-      },
-      include: {
-        entries: {
-          where: {
-            date: targetDate
-          }
-        }
       }
     })
 
