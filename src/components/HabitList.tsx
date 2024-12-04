@@ -147,16 +147,9 @@ export function HabitList({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6"
-        role="region"
-        aria-label="Habits list"
       >
-        {/* Calendar View */}
-        <CalendarView 
-          habits={habits} 
-          onToggleHabit={toggleHabit}
-        />
+        <CalendarView habits={habits} onToggleHabit={toggleHabit} />
 
-        {/* Add Habit Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
