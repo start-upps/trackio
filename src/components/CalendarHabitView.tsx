@@ -1,17 +1,31 @@
 // src/components/CalendarHabitView.tsx
 import React, { useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Habit } from '@/types/habit';
+import type { Habit, HabitUpdateInput } from '@/types/habit';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CalendarViewProps {
   habits: Habit[];
   onToggleHabit: (habitId: string, date: string) => Promise<void>;
+  onDelete?: (habitId: string) => Promise<void>;
+  onUpdate?: (habitId: string, data: Partial<HabitUpdateInput>) => Promise<void>;
 }
 
-export default function CalendarView({ habits, onToggleHabit }: CalendarViewProps) {
+export default function CalendarView({ 
+  habits, 
+  onToggleHabit,
+  onDelete,
+  onUpdate 
+}: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
   const days = eachDayOfInterval({
@@ -73,17 +87,51 @@ export default function CalendarView({ habits, onToggleHabit }: CalendarViewProp
             {habits.map(habit => (
               <tr key={habit.id} className="border-b border-gray-800">
                 <td className="p-4 border-r border-gray-800">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: habit.color }}
-                    >
-                      {habit.icon}
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: habit.color }}
+                      >
+                        {habit.icon}
+                      </div>
+                      <div>
+                        <div className="font-medium">{habit.name}</div>
+                        <div className="text-sm text-gray-400">{habit.description}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium">{habit.name}</div>
-                      <div className="text-sm text-gray-400">{habit.description}</div>
-                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onUpdate && (
+                          <DropdownMenuItem onClick={() => onUpdate(habit.id, habit)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(habit.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </td>
                 {days.map(day => {
