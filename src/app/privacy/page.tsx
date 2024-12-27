@@ -1,3 +1,4 @@
+// src/app/privacy/page.tsx
 import { cn } from "@/lib/utils";
 
 export default function PrivacyPage() {
@@ -16,97 +17,76 @@ export default function PrivacyPage() {
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">Introduction</h2>
               <p className="text-gray-300">
-                At Trackio, we take your privacy seriously. This Privacy Policy explains how we collect, 
-                use, and protect your personal information when you use our habit tracking application 
-                ("Trackio" or the "App"), available both as a web application and iOS app.
+                At Trackio, we take your privacy seriously. This Privacy Policy explains how our habit tracking 
+                applications ("Trackio" or the "App") handle data, both for our web application and iOS app.
               </p>
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">Information We Collect</h2>
-              <div className="space-y-2">
-                <h3 className="text-xl font-medium">Account Information</h3>
-                <p className="text-gray-300">
-                  When you create an account, we collect:
-                </p>
-                <ul className="list-disc list-inside text-gray-300 ml-4 space-y-2">
-                  <li>Email address</li>
-                  <li>Password (securely hashed)</li>
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xl font-medium">Usage Data</h3>
-                <p className="text-gray-300">
-                  We collect data about how you use Trackio, including:
-                </p>
-                <ul className="list-disc list-inside text-gray-300 ml-4 space-y-2">
-                  <li>Habits you create and track</li>
-                  <li>Completion records of your habits</li>
-                  <li>App preferences and settings</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">How We Use Your Information</h2>
+              <h2 className="text-2xl font-semibold">iOS App Privacy</h2>
               <p className="text-gray-300">
-                We use the collected information to:
+                The Trackio iOS app is designed with your privacy in mind:
               </p>
               <ul className="list-disc list-inside text-gray-300 ml-4 space-y-2">
-                <li>Provide and maintain the App</li>
-                <li>Track your habit progress and generate insights</li>
-                <li>Send important updates about the App</li>
-                <li>Respond to your support requests</li>
-                <li>Improve the App based on usage patterns</li>
+                <li>All data is stored locally on your device</li>
+                <li>We do not collect, transmit, or store any personal information</li>
+                <li>No analytics or tracking systems are implemented</li>
+                <li>No account creation is required</li>
+                <li>No internet connection is required to use the app</li>
               </ul>
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">Data Storage and Security</h2>
+              <h2 className="text-2xl font-semibold">Web Application</h2>
               <p className="text-gray-300">
-                Your data is stored securely in our databases using industry-standard encryption. 
-                We implement appropriate security measures to protect against unauthorized access, 
-                alteration, disclosure, or destruction of your information.
+                For users of our web application (www.trackio.art), we collect minimal information 
+                necessary to provide the service:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 ml-4 space-y-2">
+                <li>Email address (for account creation)</li>
+                <li>Password (securely hashed)</li>
+                <li>Habit tracking data (stored securely on our servers)</li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">Data Security</h2>
+              <p className="text-gray-300">
+                For our web application users, data is stored securely using industry-standard 
+                encryption. iOS app data remains solely on your device and is protected by your 
+                device's built-in security features.
               </p>
             </div>
 
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">Data Sharing</h2>
               <p className="text-gray-300">
-                We do not sell, trade, or rent your personal information to third parties. 
-                We may share anonymous, aggregated data for analytical purposes.
+                We do not sell, trade, or rent any personal information to third parties. 
+                The iOS app does not share any data as all information remains local to your device.
               </p>
             </div>
 
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">Your Rights</h2>
               <p className="text-gray-300">
-                You have the right to:
+                For web application users, you have the right to:
               </p>
               <ul className="list-disc list-inside text-gray-300 ml-4 space-y-2">
                 <li>Access your personal data</li>
-                <li>Correct inaccurate data</li>
-                <li>Request deletion of your data</li>
+                <li>Request deletion of your account and data</li>
                 <li>Export your data</li>
-                <li>Opt out of marketing communications</li>
               </ul>
-            </div>
-
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">Cookies</h2>
-              <p className="text-gray-300">
-                We use cookies and similar tracking technologies to track activity on our App 
-                and hold certain information. Cookies are files with a small amount of data 
-                which may include an anonymous unique identifier.
+              <p className="text-gray-300 mt-2">
+                For iOS app users, you have complete control over your data as it's stored locally 
+                on your device. You can delete the app at any time to remove all associated data.
               </p>
             </div>
 
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">Children's Privacy</h2>
               <p className="text-gray-300">
-                Our App is not intended for children under 13 years of age. We do not knowingly 
-                collect personal information from children under 13.
+                Our App is not intended for children under 13 years of age. The iOS app does not 
+                collect any personal information from any users, including children.
               </p>
             </div>
 
