@@ -3,14 +3,16 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 
-const publicRoutes = ['/auth/login', '/auth/signup']
+// Define public paths that don't require authentication
+const publicPaths = ['/auth/login', '/auth/signup', '/support']
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
   console.log('Middleware checking path:', path)
 
-  if (publicRoutes.includes(path)) {
-    console.log('Public route detected, allowing access')
+  // Check if the current path is in publicPaths
+  if (publicPaths.some(publicPath => path.startsWith(publicPath))) {
+    console.log('Public path detected, allowing access:', path)
     return NextResponse.next()
   }
 
@@ -42,7 +44,17 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Update matcher to exclude public paths
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+    /*
+     * Match all request paths except:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - auth/* (auth routes)
+     * - support (support page)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|auth|support).*)'
+  ]
 }
