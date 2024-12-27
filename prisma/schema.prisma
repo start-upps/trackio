@@ -54,3 +54,45 @@ model HabitEntry {
   @@index([date])
   @@unique([habitId, date])
 }
+
+enum Platform {
+  WEB
+  IOS
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id          String      @id @default(cuid())
+  email       String      // Email for responding to the ticket
+  subject     String
+  description String      @db.Text
+  platform    Platform
+  status      TicketStatus @default(OPEN)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  responses   TicketResponse[]
+
+  @@map("support_tickets")
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TicketResponse {
+  id        String        @id @default(cuid())
+  message   String        @db.Text
+  isStaff   Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_responses")
+  @@index([ticketId])
+}
