@@ -126,7 +126,7 @@ export default function PrivacyPage() {
               </p>
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-800">
                 <ul className="space-y-2 text-gray-300">
-                  <li>Email: privacy@trackio.art</li>
+                  <li>Email: ismetsemedov@gmail.com</li>
                   <li>Website: www.trackio.art</li>
                 </ul>
               </div>
