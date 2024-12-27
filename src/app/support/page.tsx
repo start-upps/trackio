@@ -1,6 +1,4 @@
 // src/app/support/page.tsx
-import { verifyAuth } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { SupportForm } from "@/components/support/SupportForm";
 
 export const metadata = {
@@ -8,13 +6,7 @@ export const metadata = {
   description: "Get help with Trackio",
 };
 
-export default async function SupportPage() {
-  const userId = await verifyAuth();
-  
-  if (!userId) {
-    redirect("/auth/login");
-  }
-
+export default function SupportPage() {
   return (
     <div className="min-h-screen bg-black text-white p-4">
       <div className="container mx-auto max-w-4xl">
